@@ -76,7 +76,46 @@ jobs:
         shell: powershell
         run: |
           wpm install tinycc --arch ${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { throw 'WPM failed to install TinyCC' }
           wpm install wcrt --arch ${{ matrix.arch }}
+          if ($LASTEXITCODE -ne 0) { throw 'WPM failed to install WCRT' }
+
+      - name: Locate build tools
+        shell: powershell
+        run: |
+          $driver = @{
+            x86 = 'i386-win32-tcc.exe'
+            x64 = 'x86_64-win32-tcc.exe'
+            arm64 = 'arm64-win32-tcc.exe'
+          }['${{ matrix.arch }}']
+          $tinyCc = Get-ChildItem "$env:ProgramFiles\TinyCC" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            Where-Object { Test-Path (Join-Path $_.FullName $driver) } |
+            Select-Object -First 1
+          if (-not $tinyCc) {
+            Get-ChildItem "$env:ProgramFiles\TinyCC" -Recurse -ErrorAction SilentlyContinue
+            throw "The WPM TinyCC package does not contain $driver"
+          }
+          $wcrt = Get-ChildItem "$env:ProgramFiles\WCRT" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            Where-Object {
+              (Test-Path (Join-Path $_.FullName 'lib\libwcrt.a')) -and
+              (Test-Path (Join-Path $_.FullName 'include\stdio.h'))
+            } |
+            Select-Object -First 1
+          if (-not $wcrt) {
+            Get-ChildItem "$env:ProgramFiles\WCRT" -Recurse -ErrorAction SilentlyContinue
+            throw 'The WPM WCRT package is incomplete'
+          }
+          "WPM_TCC_ROOT=$($tinyCc.FullName)" | Add-Content -Path $env:GITHUB_ENV
+          "WPM_WCRT_ROOT=$($wcrt.FullName)" | Add-Content -Path $env:GITHUB_ENV
+          Write-Host "TinyCC: $($tinyCc.FullName)\$driver"
+          Write-Host "WCRT: $($wcrt.FullName)"
+
+          if (-not (Get-Command ninja.exe -ErrorAction SilentlyContinue)) {
+            choco install ninja --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Chocolatey failed to install Ninja' }
+          }
 
       - name: Configure and build
         shell: powershell

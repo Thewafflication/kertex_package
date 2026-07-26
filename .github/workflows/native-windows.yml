@@ -99,16 +99,23 @@ jobs:
             Get-ChildItem "$env:ProgramFiles\TinyCC" -Recurse -ErrorAction SilentlyContinue
             throw "The WPM TinyCC package does not contain $driver"
           }
+          $minimumWcrtVersion = [version]'0.9.4'
           $wcrt = Get-ChildItem "$env:ProgramFiles\WCRT" -Directory -ErrorAction SilentlyContinue |
             Sort-Object Name -Descending |
             Where-Object {
+              $parsedVersion = $null
+              $versionText = ($_.Name -split '[+-]')[0]
+              $versionIsSupported = [version]::TryParse($versionText, [ref]$parsedVersion) -and
+                $parsedVersion -ge $minimumWcrtVersion
+              $versionIsSupported -and
               (Test-Path (Join-Path $_.FullName 'lib\libwcrt.a')) -and
+              (Test-Path (Join-Path $_.FullName 'lib\wcrt-startup-console.o')) -and
               (Test-Path (Join-Path $_.FullName 'include\stdio.h'))
             } |
             Select-Object -First 1
           if (-not $wcrt) {
             Get-ChildItem "$env:ProgramFiles\WCRT" -Recurse -ErrorAction SilentlyContinue
-            throw 'The WPM WCRT package is incomplete'
+            throw 'WCRT 0.9.4+ with libwcrt.a, headers, and the console startup object is required'
           }
           "WPM_TCC_ROOT=$($tinyCc.FullName)" | Add-Content -Path $env:GITHUB_ENV
           "WPM_WCRT_ROOT=$($wcrt.FullName)" | Add-Content -Path $env:GITHUB_ENV

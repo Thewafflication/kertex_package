@@ -37,6 +37,12 @@ endif()
 if(NOT KERTEX_WCRT_ROOT)
   message(FATAL_ERROR "WPM WCRT package not found; install wcrt or set WPM_WCRT_ROOT")
 endif()
+set(KERTEX_WCRT_CONSOLE_STARTUP "${KERTEX_WCRT_ROOT}/lib/wcrt-startup-console.o")
+if(NOT EXISTS "${KERTEX_WCRT_CONSOLE_STARTUP}")
+  message(FATAL_ERROR
+    "WCRT console startup object not found: ${KERTEX_WCRT_CONSOLE_STARTUP}. "
+    "Install WCRT 0.9.4 or newer.")
+endif()
 
 message(STATUS "kerTeX target: ${KERTEX_ARCH}")
 message(STATUS "TinyCC package: ${KERTEX_TCC_ROOT}")
@@ -51,8 +57,12 @@ include_directories("${KERTEX_SOURCE_DIR}/lib1/pascal")
 
 add_library(kertex_wcrt INTERFACE)
 target_compile_definitions(kertex_wcrt INTERFACE T_TETRA=int)
-target_link_options(kertex_wcrt INTERFACE -nostdlib "${KERTEX_TCC_ROOT}/lib/kernel32.def")
-target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_WCRT_ROOT}/lib/libwcrt.a")
+target_compile_options(kertex_wcrt INTERFACE -std=c99)
+target_link_options(kertex_wcrt INTERFACE -nostdlib -Wl,-nostdlib)
+target_link_libraries(kertex_wcrt INTERFACE
+  "${KERTEX_WCRT_CONSOLE_STARTUP}"
+  "${KERTEX_WCRT_ROOT}/lib/libwcrt.a"
+)
 if(KERTEX_ARCH STREQUAL "x86")
   target_compile_definitions(kertex_wcrt INTERFACE WINVER=0x0500 _WIN32_WINNT=0x0500)
   target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_TCC_ROOT}/lib/i386-win32-libtcc1.a")
@@ -61,10 +71,11 @@ elseif(KERTEX_ARCH STREQUAL "x64")
 else()
   target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_TCC_ROOT}/lib/arm64-win32-libtcc1.a")
 endif()
+target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_TCC_ROOT}/lib/kernel32.def")
 
 function(kertex_program name)
-  add_executable(${name} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/wcrt_start.c" ${ARGN})
-  set_property(TARGET ${name} PROPERTY C_STANDARD 90)
+  add_executable(${name} ${ARGN})
+  set_property(TARGET ${name} PROPERTY C_STANDARD 99)
   set_property(TARGET ${name} PROPERTY C_STANDARD_REQUIRED ON)
   set_property(TARGET ${name} PROPERTY C_EXTENSIONS ON)
   target_link_libraries(${name} PRIVATE kertex_wcrt)
@@ -102,7 +113,7 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
   function(kertex_generated_program name relative_directory)
     set(_source "${KERTEX_GENERATED_ROOT}/${relative_directory}/${name}.c")
     if(EXISTS "${_source}")
-      kertex_program(${name} "${_source}")
+      kertex_program(${name} "${_source}" ${ARGN})
       target_include_directories(${name} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${KERTEX_GENERATED_ROOT}"
@@ -122,7 +133,8 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
   kertex_generated_program(pooltype webware/bin1/pooltype)
   kertex_generated_program(gftype mfware/bin1/gftype)
   kertex_generated_program(gftodvi mfware/bin1/gftodvi)
-  kertex_generated_program(mft mfware/bin1/mft)
+  kertex_generated_program(mft mfware/bin1/mft
+    "${KERTEX_SOURCE_DIR}/mfware/bin1/mft/extra.c")
   kertex_generated_program(tftopl texware/bin1/tftopl)
   kertex_generated_program(pltotf texware/bin1/pltotf)
   kertex_generated_program(bibtex texware/bin1/bibtex)

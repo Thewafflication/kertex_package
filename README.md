@@ -9,7 +9,8 @@ WPM-packaged TinyCC and WCRT toolchain. The target matrix is:
 | x64 | x64 editions of Windows |
 | ARM64 | Windows 10 and Windows 11 on ARM |
 
-Install the `tinycc` and architecture-matched `wcrt` packages with WPM, then
+Install the prerelease `tinycc` package and the published, architecture-matched
+WCRT 0.9.4 or newer with WPM, then
 configure and build one of the presets:
 
 ```powershell
@@ -49,7 +50,8 @@ METAFONT, font, DVI, and MetaPost utilities. The large TeX, METAFONT, MetaPost,
 e-TeX, and Prote engines will be connected after this slice establishes the
 cross-runtime compatibility fixes they share.
 
-Release targets link WCRT statically with `-nostdlib`. `tools/Verify-Pe.ps1`
+Release targets link WCRT statically with `-nostdlib` and use WCRT's packaged
+console startup object as the PE entry point. `tools/Verify-Pe.ps1`
 checks the PE machine type, the legacy x86 subsystem baseline, and absence of
 MSVCRT/UCRT imports. Passing that structural check is necessary but does not by
 itself constitute a Windows 2000 runtime test.

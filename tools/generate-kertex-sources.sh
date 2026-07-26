@@ -21,10 +21,35 @@ for archive in "$work/src"/*.tar.gz; do
   tar -xzf "$archive" -C "$work/src"
 done
 
-# Generate from the checked-out kertex_T tree so local changes and the
-# submodule revision under test, rather than the bundled release copy, win.
-rm -rf "$work/src/kertex_T"
-cp -a "$repo/kertex_T" "$work/src/kertex_T"
+# The release archive contains generated webmerged*.ch inputs that are
+# intentionally absent from Git. Preserve that tree, then overlay the checked
+# out submodule so its revision and local changes win for tracked sources.
+cp -a "$repo/kertex_T/." "$work/src/kertex_T/"
+
+required_merged_inputs='
+tex/bin1/webmergedBIG.ch
+tex/bin1/webmergedTRIP.ch
+mf/bin1/webmergedIniBIG.ch
+mf/bin1/webmergedBIG.ch
+mf/bin1/webmergedTRAP.ch
+mp/bin1/webmergedBIG.ch
+mp/bin1/webmergedTWIST.ch
+texware/bin1/bibtex/webmergedBIG.ch
+etex/bin1/webmergedBIG.ch
+etex/bin1/webmergedETRIP.ch
+prote/bin1/webmergedBIG.ch
+prote/bin1/webmergedSELLETTE.ch
+'
+missing_inputs=
+for relative_path in $required_merged_inputs; do
+  if ! test -s "$work/src/kertex_T/$relative_path"; then
+    missing_inputs="$missing_inputs $relative_path"
+  fi
+done
+if test -n "$missing_inputs"; then
+  echo "kerTeX release bundle is missing required generated inputs:$missing_inputs" >&2
+  exit 3
+fi
 
 conf="$work/kertex.conf"
 cat >"$conf" <<EOF

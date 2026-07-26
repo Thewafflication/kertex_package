@@ -179,9 +179,12 @@ jobs:
       - name: Build WPM package
         shell: powershell
         run: |
-          $arguments = @('-Architecture', '${{ matrix.arch }}', '-Version', $env:KERTEX_PACKAGE_VERSION)
+          $arguments = @{
+            Architecture = '${{ matrix.arch }}'
+            Version = $env:KERTEX_PACKAGE_VERSION
+          }
           if ($env:KERTEX_WPM_SIGNING_KEY) {
-            $arguments += @('-SigningKey', $env:KERTEX_WPM_SIGNING_KEY)
+            $arguments.SigningKey = $env:KERTEX_WPM_SIGNING_KEY
           }
           ./tools/Build-WpmPackage.ps1 @arguments
 

@@ -149,7 +149,7 @@ jobs:
       - name: Configure and build
         shell: powershell
         run: |
-          cmake --preset ${{ matrix.arch }}-release -DKERTEX_PACKAGE_VERSION=$env:KERTEX_PACKAGE_VERSION
+          cmake --preset ${{ matrix.arch }}-release "-DKERTEX_PACKAGE_VERSION=$env:KERTEX_PACKAGE_VERSION"
           if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
           cmake --build --preset build-${{ matrix.arch }}-release
           if ($LASTEXITCODE -ne 0) { throw 'CMake build failed' }

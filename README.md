@@ -69,10 +69,16 @@ ARM64 packages, `index.json`, the WPM release public key, and SHA-256 checksums.
 
 ## Install with WPM
 
-Install WPM first, then trust the kerTeX release key and add the release as a
+Install WPM, then trust the kerTeX release key and add the GitHub Release as a
 package repository:
 
 ```powershell
+$installer = Join-Path $env:TEMP 'wpm-install.cmd'
+Invoke-WebRequest -UseBasicParsing `
+  https://github.com/Thewafflication/wpm/releases/latest/download/install.cmd `
+  -OutFile $installer
+& $installer
+
 Invoke-WebRequest -UseBasicParsing `
   https://github.com/Thewafflication/kertex_package/releases/latest/download/wpm-release.public `
   -OutFile wpm-release.public

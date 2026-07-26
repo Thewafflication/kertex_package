@@ -70,7 +70,10 @@ jobs:
           }
           wpm repo add https://github.com/Thewafflication/tcc_package/releases/latest/download
           wpm repo add https://github.com/Thewafflication/wcrt/releases/latest/download
+          wpm config set prerelease true --package tinycc
+          if ($LASTEXITCODE -ne 0) { throw 'WPM failed to enable TinyCC prereleases' }
           wpm update
+          if ($LASTEXITCODE -ne 0) { throw 'WPM failed to update package indexes' }
 
       - name: Install TinyCC and WCRT
         shell: powershell

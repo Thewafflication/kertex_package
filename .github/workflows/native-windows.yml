@@ -262,8 +262,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = '${{ github.ref_name }}'
+          $previousErrorAction = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
           gh release view $tag --repo '${{ github.repository }}' *> $null
-          if ($LASTEXITCODE -ne 0) {
+          $releaseViewExitCode = $LASTEXITCODE
+          $ErrorActionPreference = $previousErrorAction
+          if ($releaseViewExitCode -ne 0) {
             gh release create $tag --repo '${{ github.repository }}' --target '${{ github.sha }}' --generate-notes --title $tag
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }

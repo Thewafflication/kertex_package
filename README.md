@@ -55,3 +55,9 @@ console startup object as the PE entry point. `tools/Verify-Pe.ps1`
 checks the PE machine type, the legacy x86 subsystem baseline, and absence of
 MSVCRT/UCRT imports. Passing that structural check is necessary but does not by
 itself constitute a Windows 2000 runtime test.
+
+Each Windows CI job also creates an architecture-specific WPM package from the
+CMake install tree. Tagged builds use the semantic version from the tag; other
+builds use a unique `0.0.0-ci` prerelease version. Installation places kerTeX
+under Program Files, sets `KERTEX_HOME`, `KERTEX_BINDIR`, and `KERTEX_LIBDIR`,
+and adds the package's `bin` directory to the machine `Path`.

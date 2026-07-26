@@ -1,0 +1,99 @@
+name: Native Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install generator prerequisites
+        run: sudo apt-get update && sudo apt-get install -y bison flex ed
+      - name: Download verified source bundle
+        shell: bash
+        run: |
+          mkdir -p out/downloads
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            https://downloads.kergis.com/kertex/kertex_bundle.tar \
+            --output out/downloads/kertex_bundle.tar
+          echo 'b87408cc963be3b013be588935861771c7acca011becf2888fa9629c1b97b3b4  out/downloads/kertex_bundle.tar' | sha256sum --check
+      - name: Generate C sources
+        shell: bash
+        run: sh tools/generate-kertex-sources.sh out/downloads/kertex_bundle.tar "$PWD" out/generated
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kertex-generated-c
+          path: out/generated
+          if-no-files-found: error
+
+  build:
+    needs: generate
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kertex-generated-c
+          path: out/generated
+
+      - name: Install WPM
+        shell: powershell
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'wpm-install.cmd'
+          Invoke-WebRequest -UseBasicParsing 'https://github.com/Thewafflication/wpm/releases/latest/download/install.cmd' -OutFile $installer
+          & $installer
+          'C:\Program Files\WPM' | Add-Content -Path $env:GITHUB_PATH
+
+      - name: Trust package repositories
+        shell: powershell
+        run: |
+          $keys = @(
+            'https://github.com/Thewafflication/tcc_package/releases/latest/download/wpm-release.public',
+            'https://github.com/Thewafflication/wcrt/releases/latest/download/wpm-release.public'
+          )
+          foreach ($url in $keys) {
+            $key = Join-Path $env:RUNNER_TEMP ([IO.Path]::GetRandomFileName())
+            Invoke-WebRequest -UseBasicParsing $url -OutFile $key
+            wpm trust add $key
+          }
+          wpm repo add https://github.com/Thewafflication/tcc_package/releases/latest/download
+          wpm repo add https://github.com/Thewafflication/wcrt/releases/latest/download
+          wpm update
+
+      - name: Install TinyCC and WCRT
+        shell: powershell
+        run: |
+          wpm install tinycc --arch ${{ matrix.arch }}
+          wpm install wcrt --arch ${{ matrix.arch }}
+
+      - name: Configure and build
+        shell: powershell
+        run: |
+          cmake --preset ${{ matrix.arch }}-release
+          cmake --build --preset build-${{ matrix.arch }}-release
+          cmake --install out/build/${{ matrix.arch }}-release
+
+      - name: Verify native PE files
+        shell: powershell
+        run: |
+          Get-ChildItem out/install/${{ matrix.arch }}-release/bin/*.exe | ForEach-Object {
+            ./tools/Verify-Pe.ps1 -Path $_.FullName -Architecture ${{ matrix.arch }}
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kertex-windows-${{ matrix.arch }}
+          path: out/install/${{ matrix.arch }}-release
+          if-no-files-found: error

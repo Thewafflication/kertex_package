@@ -1,0 +1,21 @@
+#ifndef KERTEX_H
+#define KERTEX_H
+
+#define strtonum strtonum_
+#define remainder remainder_
+#define getline getline_
+#define SYSTEM_ENCODING 0
+#define DIR_SEP "/"
+#define DIR_SEP_CHAR '/'
+#define CURDIR "./"
+#define PATH_SEP ";"
+#define PATH_SEP_CHAR ';'
+#define PATH_SPEC_FILE "KXPATH"
+#define PATH_ADD_DIRECTIVE "KERTEXSYS"
+#define MAXPATHSPEC 32767
+#define KERTEX_LIBDIR "share/kertex"
+#define KERTEX_BINDIR "bin"
+#define KX_EXIT_SUCCESS 0
+#define KX_EXIT_FAILURE 1
+
+#endif

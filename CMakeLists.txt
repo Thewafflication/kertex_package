@@ -104,6 +104,8 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
     if(EXISTS "${_source}")
       kertex_program(${name} "${_source}")
       target_include_directories(${name} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${KERTEX_GENERATED_ROOT}"
         "${KERTEX_GENERATED_ROOT}/${relative_directory}"
         "${KERTEX_SOURCE_DIR}/${relative_directory}"
         "${KERTEX_SOURCE_DIR}/lib1/web"

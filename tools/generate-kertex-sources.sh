@@ -72,4 +72,17 @@ make -C "$target_obj" SAVE_SPACE=NO all
 rm -rf "$output"
 mkdir -p "$output"
 cp -a "$target_obj/." "$output/"
+
+# pp2rc preserves the header pathname passed by the RISK makefiles. Those
+# paths point into this temporary Linux workspace and are invalid when the C
+# artifact is compiled on Windows. Convert them to repository-relative paths.
+find "$output" -type f \( -name '*.c' -o -name '*.h' \) -exec \
+  sed -i \
+    -e "s|$work/src/kertex_T/|kertex_T/|g" \
+    -e "s|$target_obj/||g" {} +
+if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
+  echo 'Generated C still contains non-relocatable generator paths' >&2
+  exit 4
+fi
+
 printf '%s\n' "$target_obj" >"$output/.generator-origin"

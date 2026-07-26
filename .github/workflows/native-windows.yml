@@ -173,7 +173,7 @@ jobs:
             throw 'Tagged releases require the WPM_RELEASE_PRIVATE_KEY secret'
           }
           $keyPath = Join-Path $env:RUNNER_TEMP 'kertex-release.private'
-          Set-Content -LiteralPath $keyPath -Value $env:WPM_PRIVATE_KEY -Encoding utf8NoBOM
+          Set-Content -LiteralPath $keyPath -Value $env:WPM_PRIVATE_KEY -Encoding ascii
           "KERTEX_WPM_SIGNING_KEY=$keyPath" | Add-Content -Path $env:GITHUB_ENV
 
       - name: Build WPM package
@@ -245,7 +245,7 @@ jobs:
           if (@($packages).Count -ne 3) { throw 'Expected exactly three KerTeX WPM packages.' }
           [ordered]@{ version = 1; packages = @($packages) } |
             ConvertTo-Json -Depth 4 |
-            Set-Content (Join-Path $assets 'index.json') -Encoding utf8NoBOM
+            Set-Content (Join-Path $assets 'index.json') -Encoding ascii
 
       - name: Generate release checksums
         shell: powershell

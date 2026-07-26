@@ -79,7 +79,9 @@ cp -a "$target_obj/." "$output/"
 find "$output" -type f \( -name '*.c' -o -name '*.h' \) -exec \
   sed -i \
     -e "s|$work/src/kertex_T/|kertex_T/|g" \
-    -e "s|$target_obj/||g" {} +
+    -e "s|$target_obj/||g" \
+    -e "s|$work/install/share/kertex|share/kertex|g" \
+    -e "s|$work/install/bin/kertex|bin/kertex|g" {} +
 if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
   echo 'Generated C still contains non-relocatable generator paths' >&2
   exit 4

@@ -1,0 +1,6 @@
+[submodule "kertex_T"]
+	path = kertex_T
+	url = https://github.com/tlaronde/kertex_T
+[submodule "tools/wsp"]
+	path = tools/wsp
+	url = https://github.com/Thewafflication/wsp

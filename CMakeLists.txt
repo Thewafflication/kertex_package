@@ -50,6 +50,7 @@ include_directories(BEFORE "${CMAKE_BINARY_DIR}/include")
 include_directories("${KERTEX_SOURCE_DIR}/lib1/pascal")
 
 add_library(kertex_wcrt INTERFACE)
+target_compile_definitions(kertex_wcrt INTERFACE T_TETRA=int)
 target_link_options(kertex_wcrt INTERFACE -nostdlib "${KERTEX_TCC_ROOT}/lib/kernel32.def")
 target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_WCRT_ROOT}/lib/libwcrt.a")
 if(KERTEX_ARCH STREQUAL "x86")

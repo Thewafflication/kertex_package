@@ -58,6 +58,35 @@ itself constitute a Windows 2000 runtime test.
 
 Each Windows CI job also creates an architecture-specific WPM package from the
 CMake install tree. Tagged builds use the semantic version from the tag; other
-builds use a unique `0.0.0-ci` prerelease version. Installation places kerTeX
+builds combine the upstream version from `kertex_T/CID` with a unique `ci`
+prerelease and source revision. Installation places kerTeX
 under Program Files, sets `KERTEX_HOME`, `KERTEX_BINDIR`, and `KERTEX_LIBDIR`,
 and adds the package's `bin` directory to the machine `Path`.
+
+Published tagged builds form a WPM repository at the release's
+`releases/latest/download` URL. Each release contains signed x86, x64, and
+ARM64 packages, `index.json`, the WPM release public key, and SHA-256 checksums.
+
+## Install with WPM
+
+Install WPM first, then trust the kerTeX release key and add the release as a
+package repository:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing `
+  https://github.com/Thewafflication/kertex_package/releases/latest/download/wpm-release.public `
+  -OutFile wpm-release.public
+wpm trust add wpm-release.public
+wpm repo add https://github.com/Thewafflication/kertex_package/releases/latest/download
+wpm update
+wpm install kertex
+```
+
+WPM selects the native architecture by default. To choose one explicitly, use
+`wpm install kertex --arch x86`, `--arch x64`, or `--arch arm64`.
+
+That same resolved version is embedded in every executable's Windows
+`VERSIONINFO` resource and used by the WPM metadata and filename. The numeric
+Windows version maps to `major, minor, patch, build`; tagged releases use build
+zero and CI builds use the bounded Actions run number. The upstream kerTeX
+version from `kertex_T/CID` is retained separately as `SourceVersion`.

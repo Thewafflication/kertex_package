@@ -16,6 +16,47 @@ set(KERTEX_ARCH "x86" CACHE STRING "Target architecture: x86, x64, or arm64")
 set_property(CACHE KERTEX_ARCH PROPERTY STRINGS x86 x64 arm64)
 set(KERTEX_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/kertex_T" CACHE PATH "kertex_T source directory")
 set(KERTEX_GENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/generated" CACHE PATH "Host-generated kerTeX object tree")
+set(KERTEX_PACKAGE_VERSION "0.0.0-local" CACHE STRING "Semantic product and WPM package version")
+if(NOT KERTEX_PACKAGE_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)([-+].*)?$")
+  message(FATAL_ERROR "KERTEX_PACKAGE_VERSION must be semantic: ${KERTEX_PACKAGE_VERSION}")
+endif()
+set(_kertex_version_major "${CMAKE_MATCH_1}")
+set(_kertex_version_minor "${CMAKE_MATCH_2}")
+set(_kertex_version_patch "${CMAKE_MATCH_3}")
+set(_kertex_version_build 0)
+if(KERTEX_PACKAGE_VERSION MATCHES "-ci\\.([0-9]+)")
+  set(_kertex_version_build "${CMAKE_MATCH_1}")
+endif()
+foreach(_component _kertex_version_major _kertex_version_minor _kertex_version_patch _kertex_version_build)
+  if(${_component} GREATER 65535)
+    set(${_component} 65535)
+  endif()
+endforeach()
+set(KERTEX_FILE_VERSION
+  "${_kertex_version_major},${_kertex_version_minor},${_kertex_version_patch},${_kertex_version_build}")
+if(KERTEX_PACKAGE_VERSION MATCHES "-")
+  set(KERTEX_FILE_FLAGS VS_FF_PRERELEASE)
+else()
+  set(KERTEX_FILE_FLAGS 0x0L)
+endif()
+file(STRINGS "${KERTEX_SOURCE_DIR}/CID" _kertex_cid_version REGEX "^VERSION:" LIMIT_COUNT 1)
+string(REGEX REPLACE "^VERSION:[ \\t]*" "" KERTEX_SOURCE_VERSION "${_kertex_cid_version}")
+execute_process(COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}" rev-parse --short=8 HEAD
+  OUTPUT_VARIABLE KERTEX_SOURCE_REVISION OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND_ERROR_IS_FATAL ANY)
+
+find_program(KERTEX_RC_EXECUTABLE NAMES rc.exe)
+if(NOT KERTEX_RC_EXECUTABLE)
+  file(GLOB_RECURSE _kertex_rc_candidates
+    "$ENV{ProgramFiles\(x86\)}/Windows Kits/10/bin/*/x64/rc.exe")
+  list(SORT _kertex_rc_candidates COMPARE NATURAL ORDER DESCENDING)
+  if(_kertex_rc_candidates)
+    list(GET _kertex_rc_candidates 0 KERTEX_RC_EXECUTABLE)
+  endif()
+endif()
+if(NOT EXISTS "${KERTEX_RC_EXECUTABLE}")
+  message(FATAL_ERROR "The Windows SDK resource compiler rc.exe is required")
+endif()
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "TinyCC")
   message(FATAL_ERROR "Native kerTeX Windows builds require the WPM TinyCC package")
@@ -45,6 +86,7 @@ if(NOT EXISTS "${KERTEX_WCRT_CONSOLE_STARTUP}")
 endif()
 
 message(STATUS "kerTeX target: ${KERTEX_ARCH}")
+message(STATUS "kerTeX product version: ${KERTEX_PACKAGE_VERSION} (${KERTEX_FILE_VERSION})")
 message(STATUS "TinyCC package: ${KERTEX_TCC_ROOT}")
 message(STATUS "WCRT package: ${KERTEX_WCRT_ROOT}")
 
@@ -74,7 +116,25 @@ endif()
 target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_TCC_ROOT}/lib/kernel32.def")
 
 function(kertex_program name)
+  set(KERTEX_RESOURCE_NAME "${name}")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/resources")
+  set(_resource_source "${CMAKE_BINARY_DIR}/resources/${name}.rc")
+  set(_resource_object "${CMAKE_BINARY_DIR}/resources/${name}.res")
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/kertex.rc.in" "${_resource_source}" @ONLY)
+  add_custom_command(OUTPUT "${_resource_object}"
+    COMMAND "${KERTEX_RC_EXECUTABLE}" /nologo "/fo${_resource_object}" "${_resource_source}"
+    DEPENDS "${_resource_source}"
+    COMMENT "Compiling ${name}.exe version information"
+    VERBATIM)
+  add_custom_target(${name}_resource DEPENDS "${_resource_object}")
   add_executable(${name} ${ARGN})
+  add_dependencies(${name} ${name}_resource)
+  add_custom_command(TARGET ${name} POST_BUILD
+    COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
+      -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/Add-Win32Resource.ps1"
+      -Binary "$<TARGET_FILE:${name}>" -CompiledResource "${_resource_object}"
+    COMMENT "Embedding ${name}.exe version information"
+    VERBATIM)
   set_property(TARGET ${name} PROPERTY C_STANDARD 99)
   set_property(TARGET ${name} PROPERTY C_STANDARD_REQUIRED ON)
   set_property(TARGET ${name} PROPERTY C_EXTENSIONS ON)

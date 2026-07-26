@@ -41,6 +41,10 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'kertex_T/COPYRIGHTS') -Destin
 
 $gitHash = (& git -C $repositoryRoot rev-parse --short=8 HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not determine the KerTeX package source revision.' }
+$sourceVersionLine = Get-Content -LiteralPath (Join-Path $repositoryRoot 'kertex_T/CID') |
+    Where-Object { $_ -match '^VERSION:' } | Select-Object -First 1
+$sourceVersion = ($sourceVersionLine -replace '^VERSION:\s*', '').Trim()
+if ([string]::IsNullOrWhiteSpace($sourceVersion)) { throw 'KerTeX CID has no VERSION value.' }
 $metadata = @(
     'name=kertex'
     "version=$packageVersion"
@@ -51,7 +55,7 @@ $metadata = @(
     'homepage=https://github.com/Thewafflication/kertex_package'
     'repository=https://github.com/Thewafflication/kertex_package'
     'license=LicenseRef-KerTeX'
-    "source-version=$packageVersion"
+    "source-version=$sourceVersion"
     "source-revision=$gitHash"
 )
 Set-Content -LiteralPath (Join-Path $staging '.wpm/package.txt') -Value $metadata -Encoding ascii

@@ -127,10 +127,29 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Chocolatey failed to install Ninja' }
           }
 
+      - name: Resolve product version
+        shell: powershell
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -match '^v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') {
+            $version = '${{ github.ref_name }}' -replace '^v', ''
+          } else {
+            $sourceVersion = Get-Content kertex_T/CID |
+              Where-Object { $_ -match '^VERSION:\s*([0-9]+\.[0-9]+\.[0-9]+)' } |
+              Select-Object -First 1
+            if (-not $sourceVersion -or $sourceVersion -notmatch '^VERSION:\s*([0-9]+\.[0-9]+\.[0-9]+)') {
+              throw 'Could not derive the package version from kertex_T/CID'
+            }
+            $baseVersion = $Matches[1]
+            $revision = '${{ github.sha }}'.Substring(0, 8)
+            $version = "$baseVersion-ci.${{ github.run_number }}.${{ github.run_attempt }}+$revision"
+          }
+          "KERTEX_PACKAGE_VERSION=$version" | Add-Content -Path $env:GITHUB_ENV
+          Write-Host "kerTeX product/package version: $version"
+
       - name: Configure and build
         shell: powershell
         run: |
-          cmake --preset ${{ matrix.arch }}-release
+          cmake --preset ${{ matrix.arch }}-release -DKERTEX_PACKAGE_VERSION=$env:KERTEX_PACKAGE_VERSION
           if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed' }
           cmake --build --preset build-${{ matrix.arch }}-release
           if ($LASTEXITCODE -ne 0) { throw 'CMake build failed' }
@@ -144,16 +163,32 @@ jobs:
             ./tools/Verify-Pe.ps1 -Path $_.FullName -Architecture ${{ matrix.arch }}
           }
 
+      - name: Prepare WPM release signing key
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: powershell
+        env:
+          WPM_PRIVATE_KEY: ${{ secrets.WPM_RELEASE_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WPM_PRIVATE_KEY)) {
+            throw 'Tagged releases require the WPM_RELEASE_PRIVATE_KEY secret'
+          }
+          $keyPath = Join-Path $env:RUNNER_TEMP 'kertex-release.private'
+          Set-Content -LiteralPath $keyPath -Value $env:WPM_PRIVATE_KEY -Encoding utf8NoBOM
+          "KERTEX_WPM_SIGNING_KEY=$keyPath" | Add-Content -Path $env:GITHUB_ENV
+
       - name: Build WPM package
         shell: powershell
         run: |
-          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -match '^v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') {
-            $version = '${{ github.ref_name }}'
-          } else {
-            $revision = '${{ github.sha }}'.Substring(0, 8)
-            $version = '0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}+' + $revision
+          $arguments = @('-Architecture', '${{ matrix.arch }}', '-Version', $env:KERTEX_PACKAGE_VERSION)
+          if ($env:KERTEX_WPM_SIGNING_KEY) {
+            $arguments += @('-SigningKey', $env:KERTEX_WPM_SIGNING_KEY)
           }
-          ./tools/Build-WpmPackage.ps1 -Architecture '${{ matrix.arch }}' -Version $version
+          ./tools/Build-WpmPackage.ps1 @arguments
+
+      - name: Remove WPM release signing key
+        if: always() && startsWith(github.ref, 'refs/tags/')
+        shell: powershell
+        run: Remove-Item (Join-Path $env:RUNNER_TEMP 'kertex-release.private') -Force -ErrorAction SilentlyContinue
 
       - uses: actions/upload-artifact@v4
         with:
@@ -167,3 +202,68 @@ jobs:
           path: out/packages/kertex-${{ matrix.arch }}-*.zip
           if-no-files-found: error
           compression-level: 0
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish GitHub release
+    needs: build
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: kertex-wpm-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create WPM package manifest
+        shell: powershell
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') {
+            throw "Release tag is not semantic: $tag"
+          }
+          $assets = (Resolve-Path release-assets).Path
+          Copy-Item release_keys/wpm-release.public (Join-Path $assets 'wpm-release.public')
+          $packages = foreach ($file in Get-ChildItem $assets -Filter 'kertex-*.zip' -File) {
+            if ($file.Name -notmatch '^kertex-(x86|x64|arm64)-(.+)\.zip$') {
+              throw "Unexpected package filename: $($file.Name)"
+            }
+            [ordered]@{
+              name = 'kertex'
+              version = $Matches[2]
+              arch = $Matches[1]
+              url = "https://github.com/${{ github.repository }}/releases/download/$tag/$($file.Name)"
+            }
+          }
+          if (@($packages).Count -ne 3) { throw 'Expected exactly three KerTeX WPM packages.' }
+          [ordered]@{ version = 1; packages = @($packages) } |
+            ConvertTo-Json -Depth 4 |
+            Set-Content (Join-Path $assets 'index.json') -Encoding utf8NoBOM
+
+      - name: Generate release checksums
+        shell: powershell
+        run: |
+          $assets = (Resolve-Path release-assets).Path
+          Get-ChildItem $assets -File |
+            Sort-Object Name |
+            ForEach-Object { '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } |
+            Set-Content (Join-Path $assets 'SHA256SUMS') -Encoding ascii
+
+      - name: Create release and upload assets
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          gh release view $tag --repo '${{ github.repository }}' *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo '${{ github.repository }}' --target '${{ github.sha }}' --generate-notes --title $tag
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $assets = @(Get-ChildItem release-assets -File)
+          gh release upload $tag --repo '${{ github.repository }}' --clobber @($assets.FullName)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

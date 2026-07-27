@@ -243,9 +243,15 @@ jobs:
             }
           }
           if (@($packages).Count -ne 3) { throw 'Expected exactly three KerTeX WPM packages.' }
+          $indexPath = Join-Path $assets 'index.json'
           [ordered]@{ version = 1; packages = @($packages) } |
-            ConvertTo-Json -Depth 4 |
-            Set-Content (Join-Path $assets 'index.json') -Encoding ascii
+            ConvertTo-Json -Depth 4 -Compress |
+            Set-Content $indexPath -Encoding ascii
+          $indexText = Get-Content -LiteralPath $indexPath -Raw
+          if ($indexText -notmatch '"version":1' -or
+              @((ConvertFrom-Json $indexText).packages).Count -ne 3) {
+            throw 'Generated WPM repository index failed schema validation.'
+          }
 
       - name: Generate release checksums
         shell: powershell

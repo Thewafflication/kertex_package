@@ -111,6 +111,25 @@ for afm in "$work/src/knuth/cm/ps-type1/"*.afm; do
       "$afm" "$output/runtime/fonts/tfm/$font.tfm"
 done
 
+# manfnt has no AFM; generate its metric with METAFONT. Build the standard
+# plain base first, then run virmf explicitly against that base.
+mkdir -p "$work/mf"
+(
+  cd "$work/mf"
+  KERTEXPOOL="$target_obj/mf/bin1/inimf" \
+  KERTEXINPUTS="$work/src/knuth/lib:$repo/kertex_T/mf/lib:$work/src/knuth/cm" \
+  KERTEXDUMP="$work/mf" \
+    "$target_obj/mf/bin1/inimf/inimf" \
+      '\input plain \input modes \dump'
+  KERTEXPOOL="$target_obj/mf/bin1/inimf" \
+  KERTEXINPUTS="$work/src/knuth/lib:$repo/kertex_T/mf/lib:$work/src/knuth/cm" \
+  KERTEXDUMP="$work/mf" \
+    "$target_obj/mf/bin1/virmf/virmf" \
+      '&plain \mode=ljfour; nonstopmode; input manfnt'
+)
+test -s "$work/mf/manfnt.tfm"
+cp "$work/mf/manfnt.tfm" "$output/runtime/fonts/tfm/manfnt.tfm"
+
 # TeX format dumps contain TeX's fixed-width internal words and are portable
 # across these little-endian targets.  Generate Plain TeX on the POSIX host so
 # ARM64 packages do not need to execute an ARM64 binary on an x64 CI runner.

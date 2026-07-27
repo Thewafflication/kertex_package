@@ -24,7 +24,22 @@ jobs:
           echo 'b87408cc963be3b013be588935861771c7acca011becf2888fa9629c1b97b3b4  out/downloads/kertex_bundle.tar' | sha256sum --check
       - name: Generate C sources
         shell: bash
-        run: sh tools/generate-kertex-sources.sh out/downloads/kertex_bundle.tar "$PWD" out/generated
+        run: |
+          set +e
+          sh tools/generate-kertex-sources.sh \
+            out/downloads/kertex_bundle.tar "$PWD" out/generated \
+            >out/generate-kertex-sources.log 2>&1
+          status=$?
+          echo '::group::Generator log tail (last 200 lines)'
+          tail -n 200 out/generate-kertex-sources.log
+          echo '::endgroup::'
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kertex-generation-log
+          path: out/generate-kertex-sources.log
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: kertex-generated-c

@@ -117,15 +117,13 @@ mkdir -p "$work/mf"
 (
   cd "$work/mf"
   KERTEXPOOL="$target_obj/mf/bin1/inimf" \
-  KERTEXINPUTS="$work/src/knuth/lib:$repo/kertex_T/mf/lib:$work/src/knuth/cm" \
   KERTEXDUMP="$work/mf" \
     "$target_obj/mf/bin1/inimf/inimf" \
-      '\input plain \input modes \dump'
+      "\\input $work/src/knuth/lib/plain.mf \\input $repo/kertex_T/mf/lib/modes.mf \\dump"
   KERTEXPOOL="$target_obj/mf/bin1/inimf" \
-  KERTEXINPUTS="$work/src/knuth/lib:$repo/kertex_T/mf/lib:$work/src/knuth/cm" \
   KERTEXDUMP="$work/mf" \
     "$target_obj/mf/bin1/virmf/virmf" \
-      '&plain \mode=ljfour; nonstopmode; input manfnt'
+      "&plain \\mode=ljfour; nonstopmode; input $work/src/knuth/lib/manfnt.mf"
 )
 test -s "$work/mf/manfnt.tfm"
 cp "$work/mf/manfnt.tfm" "$output/runtime/fonts/tfm/manfnt.tfm"

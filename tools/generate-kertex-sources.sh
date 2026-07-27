@@ -105,7 +105,8 @@ find "$target_obj" "$work/src/knuth" "$work/src/ams" \
 for afm in "$work/src/knuth/cm/ps-type1/"*.afm; do
   font=${afm##*/}
   font=${font%.afm}
-  KERTEXFONTS="$work/src/knuth/cm/ps-type1" \
+  # ENCSUBDIR makes afm2tfm look below each font root's enc directory.
+  KERTEXFONTS="$repo/kertex_T/fonts" \
     "$target_obj/fontware/bin1/afm2tfm/afm2tfm" \
       "$afm" "$output/runtime/fonts/tfm/$font.tfm"
 done

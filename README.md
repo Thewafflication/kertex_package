@@ -41,14 +41,27 @@ sh tools/generate-kertex-sources.sh \
 
 Reconfigure a Windows preset after `out/generated` has been populated.
 
+## Compile a Plain TeX file
+
+After installing the package and opening a new terminal so the WPM environment
+is visible, compile a Plain TeX input to DVI with:
+
+```powershell
+tex document.tex
+```
+
+The native package includes `plain.fmt`, the core Plain TeX inputs, and the
+font metrics needed during compilation. PDF output is not included yet; this
+slice stops at a `.dvi` file while the native `dvips` port is completed.
+
 The port always builds the source-native `mptotex` and `mptotr` utilities.
 GitHub Actions additionally downloads the pinned official source bundle,
 verifies its SHA-256 digest, and runs `tools/generate-kertex-sources.sh` on an
 Ubuntu host. The resulting C tree is shared by all three Windows jobs. The
-first generated-program slice includes WEB and the standalone WEB-derived TeX,
-METAFONT, font, DVI, and MetaPost utilities. The large TeX, METAFONT, MetaPost,
-e-TeX, and Prote engines will be connected after this slice establishes the
-cross-runtime compatibility fixes they share.
+generated-program slice includes WEB and the standalone WEB-derived utilities,
+plus the `initex`, `virtex`, and `tex` engines and the Plain TeX runtime inputs.
+METAFONT, MetaPost, e-TeX, Prote, and DVI-to-PostScript/PDF output remain future
+slices.
 
 Release targets link WCRT statically with `-nostdlib` and use WCRT's packaged
 console startup object as the PE entry point. `tools/Verify-Pe.ps1`

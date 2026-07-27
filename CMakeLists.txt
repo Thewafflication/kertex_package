@@ -16,6 +16,7 @@ set(KERTEX_ARCH "x86" CACHE STRING "Target architecture: x86, x64, or arm64")
 set_property(CACHE KERTEX_ARCH PROPERTY STRINGS x86 x64 arm64)
 set(KERTEX_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/kertex_T" CACHE PATH "kertex_T source directory")
 set(KERTEX_GENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/generated" CACHE PATH "Host-generated kerTeX object tree")
+set(KERTEX_RUNTIME_ROOT "${KERTEX_GENERATED_ROOT}/runtime" CACHE PATH "Host-generated kerTeX runtime tree")
 set(KERTEX_PACKAGE_VERSION "0.0.0-local" CACHE STRING "Semantic product and WPM package version")
 if(NOT KERTEX_PACKAGE_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)([-+].*)?$")
   message(FATAL_ERROR "KERTEX_PACKAGE_VERSION must be semantic: ${KERTEX_PACKAGE_VERSION}")
@@ -204,8 +205,60 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
   kertex_generated_program(vptovf fontware/bin1/vptovf)
   kertex_generated_program(gftopk fontware/bin1/gftopk)
   kertex_generated_program(dvitomp mpware/bin1/dvitomp)
+
+  # TeX is emitted by pp2rc as a family of split C translation units rather
+  # than as the single <program>.c used by the smaller WEB utilities above.
+  set(_kertex_tex_init_dir "${KERTEX_GENERATED_ROOT}/tex/bin1/initex")
+  set(_kertex_tex_vir_dir "${KERTEX_GENERATED_ROOT}/tex/bin1/virtex")
+
+  function(kertex_tex_engine name generated_directory extra_source)
+    set(_engine_sources "${generated_directory}/itex.c")
+    foreach(_part RANGE 0 11)
+      list(APPEND _engine_sources "${generated_directory}/tex${_part}.c")
+    endforeach()
+    if(NOT EXISTS "${generated_directory}/itex.c")
+      message(WARNING "Generated TeX engine sources missing: ${generated_directory}")
+      return()
+    endif()
+    kertex_program(${name} ${_engine_sources} "${extra_source}")
+    target_include_directories(${name} PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}"
+      "${KERTEX_GENERATED_ROOT}"
+      "${generated_directory}"
+      "${KERTEX_SOURCE_DIR}/tex/bin1"
+      "${KERTEX_SOURCE_DIR}/lib1/web"
+      "${KERTEX_SOURCE_DIR}/lib1/pascal")
+    target_compile_definitions(${name} PRIVATE STAT)
+    target_link_libraries(${name} PRIVATE kertex_web kertex_pascal)
+  endfunction()
+
+  kertex_tex_engine(initex "${_kertex_tex_init_dir}"
+    "${KERTEX_SOURCE_DIR}/tex/bin1/initex/extra.c")
+  if(TARGET initex)
+    target_compile_definitions(initex PRIVATE INITEX)
+  endif()
+  kertex_tex_engine(virtex "${_kertex_tex_vir_dir}"
+    "${KERTEX_SOURCE_DIR}/tex/bin1/virtex/extra.c")
+  # The executable name selects Plain TeX in virtex/extra.c.
+  kertex_tex_engine(tex "${_kertex_tex_vir_dir}"
+    "${KERTEX_SOURCE_DIR}/tex/bin1/virtex/extra.c")
+
+  if(TARGET tex AND EXISTS "${KERTEX_RUNTIME_ROOT}/lib/plain.fmt")
+    add_test(NAME plain-tex-smoke
+      COMMAND "${CMAKE_COMMAND}"
+        -DKERTEX_TEX=$<TARGET_FILE:tex>
+        -DKERTEX_RUNTIME_ROOT=${KERTEX_RUNTIME_ROOT}
+        -DKERTEX_TEST_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/plain-smoke.tex
+        -DKERTEX_TEST_DIR=${CMAKE_BINARY_DIR}/tests/plain-tex
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/PlainTeXSmoke.cmake")
+  endif()
 else()
   message(STATUS "Generated WEB sources not found; building source-native utilities only")
 endif()
 
 install(DIRECTORY "${KERTEX_SOURCE_DIR}/fonts/" DESTINATION share/kertex/fonts)
+if(EXISTS "${KERTEX_RUNTIME_ROOT}")
+  install(DIRECTORY "${KERTEX_RUNTIME_ROOT}/" DESTINATION share/kertex
+    PATTERN "lib" EXCLUDE)
+  install(DIRECTORY "${KERTEX_RUNTIME_ROOT}/lib/" DESTINATION bin/lib)
+endif()

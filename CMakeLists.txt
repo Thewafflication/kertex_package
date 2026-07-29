@@ -236,12 +236,6 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
     "${KERTEX_SOURCE_DIR}/tex/bin1/initex/extra.c")
   if(TARGET initex)
     target_compile_definitions(initex PRIVATE INITEX)
-    if(KERTEX_ARCH STREQUAL "arm64")
-      set_source_files_properties("${_kertex_tex_init_dir}/tex11.c"
-        PROPERTIES COMPILE_DEFINITIONS "main=kertex_tex_main")
-      target_sources(initex PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Arm64ExceptionProbe.c")
-    endif()
   endif()
   set(KERTEX_NATIVE_RUNTIME_ROOT "${CMAKE_BINARY_DIR}/runtime")
   set(_kertex_format_work "${CMAKE_BINARY_DIR}/format-work")

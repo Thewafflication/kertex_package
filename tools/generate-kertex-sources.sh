@@ -157,4 +157,31 @@ if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
   exit 4
 fi
 
+# pp2rc represents Pascal arrays with nonzero lower bounds by forming C
+# pointers before their backing arrays. Besides being undefined C, TinyCC's
+# ARM64 backend materializes the negative byte displacement through a W
+# register. The resulting zero-extension turns the displacement into a value
+# exactly 4 GiB too large and makes initex fault during initialize(). Keep the
+# generated indexing unchanged, but reserve the unused leading elements so the
+# logical Pascal indices are valid C array indices.
+for tex_header in \
+  "$output/tex/bin1/initex/texd.h" \
+  "$output/tex/bin1/virtex/texd.h"
+do
+  if ! grep -q -F '#define xeqlevel (zzzad -422593)' "$tex_header" ||
+     ! grep -q -F '  zzzad[844]  ;' "$tex_header" ||
+     ! grep -q -F '#define hash (zzzae -514)' "$tex_header" ||
+     ! grep -q -F '  zzzae[419697]  ;' "$tex_header"
+  then
+    echo "Unexpected generated TeX array layout: $tex_header" >&2
+    exit 5
+  fi
+  sed -i \
+    -e 's/^#define xeqlevel (zzzad -422593)$/#define xeqlevel zzzad/' \
+    -e 's/^  zzzad\[844\]  ;$/  zzzad[423437]  ;/' \
+    -e 's/^#define hash (zzzae -514)$/#define hash zzzae/' \
+    -e 's/^  zzzae\[419697\]  ;$/  zzzae[420211]  ;/' \
+    "$tex_header"
+done
+
 printf '%s\n' "$target_obj" >"$output/.generator-origin"

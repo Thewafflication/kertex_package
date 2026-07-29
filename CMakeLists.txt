@@ -237,17 +237,54 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
   if(TARGET initex)
     target_compile_definitions(initex PRIVATE INITEX)
   endif()
+  set(KERTEX_NATIVE_RUNTIME_ROOT "${CMAKE_BINARY_DIR}/runtime")
+  set(_kertex_format_work "${CMAKE_BINARY_DIR}/format-work")
+  set(_kertex_native_format "${KERTEX_NATIVE_RUNTIME_ROOT}/lib/plain.fmt")
+  file(MAKE_DIRECTORY "${_kertex_format_work}" "${KERTEX_NATIVE_RUNTIME_ROOT}/lib")
+  if(TARGET initex
+      AND EXISTS "${KERTEX_RUNTIME_ROOT}/pool/tex.pool"
+      AND EXISTS "${KERTEX_RUNTIME_ROOT}/tex/plain.tex"
+      AND EXISTS "${KERTEX_RUNTIME_ROOT}/tex/hyphen.tex"
+      AND IS_DIRECTORY "${KERTEX_RUNTIME_ROOT}/fonts/tfm")
+    file(GLOB _kertex_tfm_files CONFIGURE_DEPENDS
+      "${KERTEX_RUNTIME_ROOT}/fonts/tfm/*.tfm")
+    add_custom_command(OUTPUT "${_kertex_native_format}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${KERTEX_RUNTIME_ROOT}/pool/tex.pool" "${_kertex_format_work}/tex.pool"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${KERTEX_RUNTIME_ROOT}/tex/plain.tex" "${_kertex_format_work}/plain.tex"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${KERTEX_RUNTIME_ROOT}/tex/hyphen.tex" "${_kertex_format_work}/hyphen.tex"
+      COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${KERTEX_RUNTIME_ROOT}/fonts/tfm" "${_kertex_format_work}/tfm"
+      COMMAND "${CMAKE_COMMAND}" -E env
+        "KERTEX_LIBDIR=." "KERTEX_BINDIR=." "KERTEXPOOL=."
+        "KERTEXINPUTS=." "KERTEXFONTS=." "KERTEXDUMP=."
+        "$<TARGET_FILE:initex>" "\\input plain \\dump"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${_kertex_format_work}/plain.fmt" "${_kertex_native_format}"
+      WORKING_DIRECTORY "${_kertex_format_work}"
+      DEPENDS initex
+        "${KERTEX_RUNTIME_ROOT}/pool/tex.pool"
+        "${KERTEX_RUNTIME_ROOT}/tex/plain.tex"
+        "${KERTEX_RUNTIME_ROOT}/tex/hyphen.tex"
+        ${_kertex_tfm_files}
+      COMMENT "Generating architecture-native Plain TeX format"
+      VERBATIM)
+    add_custom_target(plain_format ALL DEPENDS "${_kertex_native_format}")
+  endif()
   kertex_tex_engine(virtex "${_kertex_tex_vir_dir}"
     "${KERTEX_SOURCE_DIR}/tex/bin1/virtex/extra.c")
   # The executable name selects Plain TeX in virtex/extra.c.
   kertex_tex_engine(tex "${_kertex_tex_vir_dir}"
     "${KERTEX_SOURCE_DIR}/tex/bin1/virtex/extra.c")
 
-  if(TARGET tex AND EXISTS "${KERTEX_RUNTIME_ROOT}/lib/plain.fmt")
+  if(TARGET tex AND TARGET plain_format)
     add_test(NAME plain-tex-smoke
       COMMAND "${CMAKE_COMMAND}"
         -DKERTEX_TEX=$<TARGET_FILE:tex>
         -DKERTEX_RUNTIME_ROOT=${KERTEX_RUNTIME_ROOT}
+        -DKERTEX_FORMAT_ROOT=${KERTEX_NATIVE_RUNTIME_ROOT}
         -DKERTEX_TEST_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/plain-smoke.tex
         -DKERTEX_TEST_DIR=${CMAKE_BINARY_DIR}/tests/plain-tex
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/PlainTeXSmoke.cmake")
@@ -260,5 +297,9 @@ install(DIRECTORY "${KERTEX_SOURCE_DIR}/fonts/" DESTINATION share/kertex/fonts)
 if(EXISTS "${KERTEX_RUNTIME_ROOT}")
   install(DIRECTORY "${KERTEX_RUNTIME_ROOT}/" DESTINATION share/kertex
     PATTERN "lib" EXCLUDE)
-  install(DIRECTORY "${KERTEX_RUNTIME_ROOT}/lib/" DESTINATION bin/lib)
+  if(TARGET plain_format)
+    install(FILES "${_kertex_native_format}" DESTINATION bin/lib)
+  elseif(EXISTS "${KERTEX_RUNTIME_ROOT}/lib")
+    install(DIRECTORY "${KERTEX_RUNTIME_ROOT}/lib/" DESTINATION bin/lib)
+  endif()
 endif()

@@ -41,6 +41,34 @@ sh tools/generate-kertex-sources.sh \
 
 Reconfigure a Windows preset after `out/generated` has been populated.
 
+## Case-colliding upstream files on Windows
+
+The `kertex_T` submodule tracks two filename pairs that differ only by case:
+`mp/lib/charlib/Ao` and `mp/lib/charlib/ao`, plus
+`mp/lib/charlib/LH` and `mp/lib/charlib/lh`. A checkout on the usual
+case-insensitive Windows filesystem cannot represent both members of each pair
+independently. As a result, `git status` may report `kertex_T` as modified
+immediately after checkout even when no source file was intentionally edited.
+
+A case-sensitive checkout is the preferred solution. If that is not practical,
+the unavoidable local differences can be hidden in the submodule index:
+
+```powershell
+git -C kertex_T update-index --skip-worktree -- `
+  mp/lib/charlib/Ao mp/lib/charlib/ao `
+  mp/lib/charlib/LH mp/lib/charlib/lh
+```
+
+This is a local workaround only; it does not change commits or resolve the
+upstream collision. Re-enable normal change detection before investigating or
+editing these files:
+
+```powershell
+git -C kertex_T update-index --no-skip-worktree -- `
+  mp/lib/charlib/Ao mp/lib/charlib/ao `
+  mp/lib/charlib/LH mp/lib/charlib/lh
+```
+
 ## Compile a Plain TeX file
 
 After installing the package and opening a new terminal so the WPM environment
@@ -51,8 +79,10 @@ tex document.tex
 ```
 
 The native package includes `plain.fmt`, the core Plain TeX inputs, and the
-font metrics needed during compilation. PDF output is not included yet; this
-slice stops at a `.dvi` file while the native `dvips` port is completed.
+font metrics needed during compilation. Each architecture generates and tests
+its own `plain.fmt` with the target `initex`; format dumps are not shared across
+x86, x64, and ARM64 packages. PDF output is not included yet; this slice stops
+at a `.dvi` file while the native `dvips` port is completed.
 
 The port always builds the source-native `mptotex` and `mptotr` utilities.
 GitHub Actions additionally downloads the pinned official source bundle,

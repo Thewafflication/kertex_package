@@ -128,9 +128,9 @@ mkdir -p "$work/mf"
 test -s "$work/mf/manfnt.tfm"
 cp "$work/mf/manfnt.tfm" "$output/runtime/fonts/tfm/manfnt.tfm"
 
-# TeX format dumps contain TeX's fixed-width internal words and are portable
-# across these little-endian targets.  Generate Plain TeX on the POSIX host so
-# ARM64 packages do not need to execute an ARM64 binary on an x64 CI runner.
+# Generate a bootstrap Plain TeX format for the shared source/runtime artifact.
+# Each native Windows build regenerates this format with its target initex so
+# the packaged dump matches that architecture's compiler and data layout.
 mkdir -p "$output/runtime/lib" "$work/format"
 (
   cd "$work/format"

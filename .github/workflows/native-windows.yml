@@ -177,6 +177,30 @@ jobs:
           cmake --install out/build/${{ matrix.arch }}-release
           if ($LASTEXITCODE -ne 0) { throw 'CMake install failed' }
 
+      - name: Diagnose ARM64 initex crash
+        if: failure() && matrix.arch == 'arm64'
+        shell: powershell
+        run: |
+          $formatWork = Resolve-Path 'out/build/arm64-release/format-work'
+          $initex = Resolve-Path 'out/build/arm64-release/bin/initex.exe'
+          $gdb = (Get-Command gdb.exe -ErrorAction Stop).Source
+          Push-Location $formatWork
+          try {
+            $env:KERTEX_LIBDIR = '.'
+            $env:KERTEX_BINDIR = '.'
+            $env:KERTEXPOOL = '.'
+            $env:KERTEXINPUTS = '.'
+            $env:KERTEXFONTS = '.'
+            $env:KERTEXDUMP = '.'
+            & $gdb --batch `
+              -ex 'set pagination off' `
+              -ex run `
+              -ex 'thread apply all bt full' `
+              --args $initex '\input plain \dump'
+          } finally {
+            Pop-Location
+          }
+
       - name: Verify native PE files
         shell: powershell
         run: |

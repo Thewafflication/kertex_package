@@ -130,12 +130,23 @@ function(kertex_program name)
   add_custom_target(${name}_resource DEPENDS "${_resource_object}")
   add_executable(${name} ${ARGN})
   add_dependencies(${name} ${name}_resource)
-  add_custom_command(TARGET ${name} POST_BUILD
-    COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
-      -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/Add-Win32Resource.ps1"
-      -Binary "$<TARGET_FILE:${name}>" -CompiledResource "${_resource_object}"
-    COMMENT "Embedding ${name}.exe version information"
-    VERBATIM)
+  if(KERTEX_ARCH STREQUAL "arm64" AND "${name}" STREQUAL "initex")
+    add_custom_command(TARGET ${name} POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E copy
+        "$<TARGET_FILE:${name}>" "$<TARGET_FILE_DIR:${name}>/initex.pre-resource.exe"
+      COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
+        -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/Add-Win32Resource.ps1"
+        -Binary "$<TARGET_FILE:${name}>" -CompiledResource "${_resource_object}"
+      COMMENT "Preserving and embedding ${name}.exe version information"
+      VERBATIM)
+  else()
+    add_custom_command(TARGET ${name} POST_BUILD
+      COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
+        -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/Add-Win32Resource.ps1"
+        -Binary "$<TARGET_FILE:${name}>" -CompiledResource "${_resource_object}"
+      COMMENT "Embedding ${name}.exe version information"
+      VERBATIM)
+  endif()
   set_property(TARGET ${name} PROPERTY C_STANDARD 99)
   set_property(TARGET ${name} PROPERTY C_STANDARD_REQUIRED ON)
   set_property(TARGET ${name} PROPERTY C_EXTENSIONS ON)
@@ -236,9 +247,6 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
     "${KERTEX_SOURCE_DIR}/tex/bin1/initex/extra.c")
   if(TARGET initex)
     target_compile_definitions(initex PRIVATE INITEX)
-    if(KERTEX_ARCH STREQUAL "arm64")
-      target_compile_options(initex PRIVATE -g)
-    endif()
   endif()
   set(KERTEX_NATIVE_RUNTIME_ROOT "${CMAKE_BINARY_DIR}/runtime")
   set(_kertex_format_work "${CMAKE_BINARY_DIR}/format-work")

@@ -177,13 +177,13 @@ jobs:
           cmake --install out/build/${{ matrix.arch }}-release
           if ($LASTEXITCODE -ne 0) { throw 'CMake install failed' }
 
-      - name: Diagnose ARM64 initex crash
+      - name: Compare ARM64 initex before and after resource embedding
         if: failure() && matrix.arch == 'arm64'
         shell: powershell
         run: |
           $formatWork = Resolve-Path 'out/build/arm64-release/format-work'
-          $initex = Resolve-Path 'out/build/arm64-release/bin/initex.exe'
-          $lldb = (Get-Command lldb.exe -ErrorAction Stop).Source
+          $beforeResource = Resolve-Path 'out/build/arm64-release/bin/initex.pre-resource.exe'
+          $afterResource = Resolve-Path 'out/build/arm64-release/bin/initex.exe'
           Push-Location $formatWork
           try {
             $env:KERTEX_LIBDIR = '.'
@@ -192,10 +192,15 @@ jobs:
             $env:KERTEXINPUTS = '.'
             $env:KERTEXFONTS = '.'
             $env:KERTEXDUMP = '.'
-            & $lldb --batch `
-              -o run `
-              -o 'thread backtrace all' `
-              -- $initex '\input plain \dump'
+            & $beforeResource '\input plain \dump'
+            $beforeExit = $LASTEXITCODE
+            & $afterResource '\input plain \dump'
+            $afterExit = $LASTEXITCODE
+            Write-Host "Pre-resource initex exit code: $beforeExit"
+            Write-Host "Post-resource initex exit code: $afterExit"
+            if ($beforeExit -eq 0 -and $afterExit -ne 0) {
+              Write-Error 'The version-resource rewrite corrupts the ARM64 initex executable.'
+            }
           } finally {
             Pop-Location
           }

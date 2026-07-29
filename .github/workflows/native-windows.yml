@@ -183,7 +183,7 @@ jobs:
         run: |
           $formatWork = Resolve-Path 'out/build/arm64-release/format-work'
           $initex = Resolve-Path 'out/build/arm64-release/bin/initex.exe'
-          $gdb = (Get-Command gdb.exe -ErrorAction Stop).Source
+          $lldb = (Get-Command lldb.exe -ErrorAction Stop).Source
           Push-Location $formatWork
           try {
             $env:KERTEX_LIBDIR = '.'
@@ -192,11 +192,10 @@ jobs:
             $env:KERTEXINPUTS = '.'
             $env:KERTEXFONTS = '.'
             $env:KERTEXDUMP = '.'
-            & $gdb --batch `
-              -ex 'set pagination off' `
-              -ex run `
-              -ex 'thread apply all bt full' `
-              --args $initex '\input plain \dump'
+            & $lldb --batch `
+              -o run `
+              -o 'thread backtrace all' `
+              -- $initex '\input plain \dump'
           } finally {
             Pop-Location
           }

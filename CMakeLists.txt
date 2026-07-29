@@ -247,7 +247,6 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
     add_test(NAME plain-tex-smoke
       COMMAND "${CMAKE_COMMAND}"
         -DKERTEX_TEX=$<TARGET_FILE:tex>
-        -DKERTEX_INITEX=$<TARGET_FILE:initex>
         -DKERTEX_RUNTIME_ROOT=${KERTEX_RUNTIME_ROOT}
         -DKERTEX_TEST_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/plain-smoke.tex
         -DKERTEX_TEST_DIR=${CMAKE_BINARY_DIR}/tests/plain-tex

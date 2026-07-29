@@ -1,7 +1,4 @@
 file(MAKE_DIRECTORY "${KERTEX_TEST_DIR}")
-file(RELATIVE_PATH _kertex_runtime_root
-  "${KERTEX_TEST_DIR}" "${KERTEX_RUNTIME_ROOT}")
-set(_kertex_runtime_root "./${_kertex_runtime_root}")
 file(REMOVE
   "${KERTEX_TEST_DIR}/plain-smoke.dvi"
   "${KERTEX_TEST_DIR}/plain-smoke.log")
@@ -12,28 +9,26 @@ file(COPY_FILE
   ONLY_IF_DIFFERENT)
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env
-    "KERTEX_LIBDIR=${_kertex_runtime_root}"
-    "KERTEX_BINDIR=${_kertex_runtime_root}"
-    "KERTEXPOOL=${_kertex_runtime_root}/pool"
-    "KERTEXDUMP=${_kertex_runtime_root}/lib"
-    "KERTEXFONTS=${_kertex_runtime_root}/fonts/tfm"
-    "${KERTEX_INITEX}" "\\end"
+    "KERTEX_LIBDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
+    "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
+    "${KERTEX_TEX}" "&plain" "\\end"
   WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
-  RESULT_VARIABLE _initex_result
-  OUTPUT_VARIABLE _initex_stdout
-  ERROR_VARIABLE _initex_stderr)
-if(NOT _initex_result EQUAL 0)
+  RESULT_VARIABLE _format_result
+  OUTPUT_VARIABLE _format_stdout
+  ERROR_VARIABLE _format_stderr)
+if(NOT _format_result EQUAL 0)
   message(FATAL_ERROR
-    "Initial TeX startup probe failed (${_initex_result})"
-    "\n${_initex_stdout}\n${_initex_stderr}")
+    "Plain TeX format-load probe failed (${_format_result})"
+    "\n${_format_stdout}\n${_format_stderr}")
 endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env
-    "KERTEX_LIBDIR=${_kertex_runtime_root}"
-    "KERTEX_BINDIR=${_kertex_runtime_root}"
-    "KERTEXPOOL=${_kertex_runtime_root}/pool"
-    "KERTEXDUMP=${_kertex_runtime_root}/lib"
-    "KERTEXFONTS=${_kertex_runtime_root}/fonts/tfm"
+    "KERTEX_LIBDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
+    "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
     "${KERTEX_TEX}" "&plain" "${_kertex_test_input_name}"
   WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
   RESULT_VARIABLE _result

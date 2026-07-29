@@ -19,6 +19,11 @@ execute_process(
   OUTPUT_VARIABLE _stdout
   ERROR_VARIABLE _stderr)
 if(NOT _result EQUAL 0 OR NOT EXISTS "${KERTEX_TEST_DIR}/plain-smoke.dvi")
+  set(_log "")
+  if(EXISTS "${KERTEX_TEST_DIR}/plain-smoke.log")
+    file(READ "${KERTEX_TEST_DIR}/plain-smoke.log" _log)
+  endif()
   message(FATAL_ERROR
-    "Plain TeX smoke test failed (${_result})\n${_stdout}\n${_stderr}")
+    "Plain TeX smoke test failed (${_result})\n${_stdout}\n${_stderr}"
+    "\nTeX transcript:\n${_log}")
 endif()

@@ -13,6 +13,22 @@ execute_process(
     "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
     "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
     "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
+    "${KERTEX_INITEX}" "\\end"
+  WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
+  RESULT_VARIABLE _initex_result
+  OUTPUT_VARIABLE _initex_stdout
+  ERROR_VARIABLE _initex_stderr)
+if(NOT _initex_result EQUAL 0)
+  message(FATAL_ERROR
+    "Initial TeX startup probe failed (${_initex_result})"
+    "\n${_initex_stdout}\n${_initex_stderr}")
+endif()
+execute_process(
+  COMMAND "${CMAKE_COMMAND}" -E env
+    "KERTEX_LIBDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
+    "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
+    "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
     "${KERTEX_TEX}" "&plain" "${_kertex_test_input_name}"
   WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
   RESULT_VARIABLE _result

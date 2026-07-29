@@ -1,4 +1,7 @@
 file(MAKE_DIRECTORY "${KERTEX_TEST_DIR}")
+file(RELATIVE_PATH _kertex_runtime_root
+  "${KERTEX_TEST_DIR}" "${KERTEX_RUNTIME_ROOT}")
+set(_kertex_runtime_root "./${_kertex_runtime_root}")
 file(REMOVE
   "${KERTEX_TEST_DIR}/plain-smoke.dvi"
   "${KERTEX_TEST_DIR}/plain-smoke.log")
@@ -9,11 +12,11 @@ file(COPY_FILE
   ONLY_IF_DIFFERENT)
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env
-    "KERTEX_LIBDIR=${KERTEX_RUNTIME_ROOT}"
-    "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
-    "KERTEXPOOL=${KERTEX_RUNTIME_ROOT}/pool"
-    "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
-    "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
+    "KERTEX_LIBDIR=${_kertex_runtime_root}"
+    "KERTEX_BINDIR=${_kertex_runtime_root}"
+    "KERTEXPOOL=${_kertex_runtime_root}/pool"
+    "KERTEXDUMP=${_kertex_runtime_root}/lib"
+    "KERTEXFONTS=${_kertex_runtime_root}/fonts/tfm"
     "${KERTEX_INITEX}" "\\end"
   WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
   RESULT_VARIABLE _initex_result
@@ -26,11 +29,11 @@ if(NOT _initex_result EQUAL 0)
 endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env
-    "KERTEX_LIBDIR=${KERTEX_RUNTIME_ROOT}"
-    "KERTEX_BINDIR=${KERTEX_RUNTIME_ROOT}"
-    "KERTEXPOOL=${KERTEX_RUNTIME_ROOT}/pool"
-    "KERTEXDUMP=${KERTEX_RUNTIME_ROOT}/lib"
-    "KERTEXFONTS=${KERTEX_RUNTIME_ROOT}/fonts/tfm"
+    "KERTEX_LIBDIR=${_kertex_runtime_root}"
+    "KERTEX_BINDIR=${_kertex_runtime_root}"
+    "KERTEXPOOL=${_kertex_runtime_root}/pool"
+    "KERTEXDUMP=${_kertex_runtime_root}/lib"
+    "KERTEXFONTS=${_kertex_runtime_root}/fonts/tfm"
     "${KERTEX_TEX}" "&plain" "${_kertex_test_input_name}"
   WORKING_DIRECTORY "${KERTEX_TEST_DIR}"
   RESULT_VARIABLE _result

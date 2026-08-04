@@ -9,8 +9,9 @@ WPM-packaged TinyCC and WCRT toolchain. The target matrix is:
 | x64 | x64 editions of Windows |
 | ARM64 | Windows 10 and Windows 11 on ARM |
 
-Install the prerelease `tinycc` package and the published, architecture-matched
-WCRT 0.9.4 or newer with WPM, then
+Install the prerelease, architecture-matched `tinycc` package and WCRT 0.9.4 or
+newer with WPM. WCRT 0.9.5 and newer use the `any` package architecture and
+contain target-specific libraries for x86, x64, and ARM64. Then
 configure and build one of the presets:
 
 ```powershell

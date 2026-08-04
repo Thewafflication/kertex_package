@@ -101,7 +101,9 @@ jobs:
         run: |
           wpm install tinycc --arch ${{ matrix.arch }}
           if ($LASTEXITCODE -ne 0) { throw 'WPM failed to install TinyCC' }
-          wpm install wcrt --arch ${{ matrix.arch }}
+          # WCRT 0.9.5+ is one architecture-neutral package containing
+          # x86, x64, and ARM64 libraries beneath architecture directories.
+          wpm install wcrt --arch any
           if ($LASTEXITCODE -ne 0) { throw 'WPM failed to install WCRT' }
 
       - name: Locate build tools

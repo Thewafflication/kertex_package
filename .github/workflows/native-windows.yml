@@ -128,10 +128,14 @@ jobs:
               $versionText = ($_.Name -split '[+-]')[0]
               $versionIsSupported = [version]::TryParse($versionText, [ref]$parsedVersion) -and
                 $parsedVersion -ge $minimumWcrtVersion
+              $architectureLib = Join-Path $_.FullName '${{ matrix.arch }}\lib'
+              $legacyLib = Join-Path $_.FullName 'lib'
               $versionIsSupported -and
-              (Test-Path (Join-Path $_.FullName 'lib\libwcrt.a')) -and
-              (Test-Path (Join-Path $_.FullName 'lib\wcrt-startup-console.o')) -and
-              (Test-Path (Join-Path $_.FullName 'include\stdio.h'))
+              (Test-Path (Join-Path $_.FullName 'include\stdio.h')) -and
+              (((Test-Path (Join-Path $architectureLib 'libwcrt.a')) -and
+                (Test-Path (Join-Path $architectureLib 'wcrt-startup-console.o'))) -or
+               ((Test-Path (Join-Path $legacyLib 'libwcrt.a')) -and
+                (Test-Path (Join-Path $legacyLib 'wcrt-startup-console.o'))))
             } |
             Select-Object -First 1
           if (-not $wcrt) {
@@ -180,6 +184,7 @@ jobs:
       - name: Verify native PE files
         shell: powershell
         run: |
+          ./tools/Verify-NativeInstall.ps1 -InstallRoot out/install/${{ matrix.arch }}-release
           Get-ChildItem out/install/${{ matrix.arch }}-release/bin/*.exe | ForEach-Object {
             ./tools/Verify-Pe.ps1 -Path $_.FullName -Architecture ${{ matrix.arch }}
           }
@@ -188,7 +193,7 @@ jobs:
         shell: powershell
         run: |
           ctest --test-dir out/build/${{ matrix.arch }}-release --output-on-failure
-          if ($LASTEXITCODE -ne 0) { throw 'Plain TeX smoke test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Native engine smoke tests failed' }
 
       - name: Prepare WPM release signing key
         if: startsWith(github.ref, 'refs/tags/')

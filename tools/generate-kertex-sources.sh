@@ -26,12 +26,27 @@ done
 # out submodule so its revision and local changes win for tracked sources.
 cp -a "$repo/kertex_T/." "$work/src/kertex_T/"
 
-# The upstream project map intentionally leaves the large engines disabled.
-# Enable the two TeX directories required by this native Plain TeX slice so
-# rkconfig creates their object directories and the generated split C files.
+# A Windows checkout may apply CRLF endings to the upstream build controls.
+# This copied tree is sourced and executed by POSIX tools, so normalize only
+# those disposable text inputs that must retain Unix line endings. CI checks
+# out the same files on Linux and is unaffected.
+find "$work/src/kertex_T/conf" -type f -exec sed -i 's/\r$//' {} +
+find "$work/src/kertex_T" -type f \( \
+  -name 'Makefile*' -o -name '*.sh' -o -name '*.data' -o \
+  -name '*.sed' -o -name '*.map' -o -name '*.ker' -o \
+  -name '*.c' -o -name '*.h' -o -name '*.ch' -o -name '*.web' -o \
+  -name '*.p' -o -name '*.w' \
+  \) -exec sed -i 's/\r$//' {} +
+
+# The upstream project map intentionally leaves some large engines disabled.
+# Enable the TeX and e-TeX directories required by the native build so rkconfig
+# creates their object directories and generated split C files.
 sed -i \
   -e 's|^#@ d \* \* \$PROJECTDIR/tex/bin1/initex \*|@ d * * $PROJECTDIR/tex/bin1/initex *|' \
   -e 's|^#@ d \* \* \$PROJECTDIR/tex/bin1/virtex \*|@ d * * $PROJECTDIR/tex/bin1/virtex *|' \
+  -e 's|^#@ d \* \* \$PROJECTDIR/etex/bin1/einitex \*|@ d * * $PROJECTDIR/etex/bin1/einitex *|' \
+  -e 's|^#@ d \* \* \$PROJECTDIR/etex/bin1/evirtex \*|@ d * * $PROJECTDIR/etex/bin1/evirtex *|' \
+  -e 's|^#@ d \* \* \$PROJECTDIR/etex/bin1/etriptex \*|@ d * * $PROJECTDIR/etex/bin1/etriptex *|' \
   "$work/src/kertex_T/conf/KERTEX_T.map"
 
 required_merged_inputs='
@@ -84,7 +99,8 @@ cp -a "$target_obj/." "$output/"
 # Preserve the runtime inputs alongside the generated C tree.  The native
 # build consumes this relocatable layout instead of reaching back into the
 # temporary POSIX generator workspace.
-mkdir -p "$output/runtime/tex" "$output/runtime/pool" \
+mkdir -p "$output/runtime/tex" "$output/runtime/mf" "$output/runtime/mp" \
+  "$output/runtime/pool" \
   "$output/runtime/fonts/tfm"
 cp "$work/src/knuth/lib/plain.tex" "$output/runtime/tex/plain.tex"
 cp "$work/src/knuth/lib/hyphen.tex" "$output/runtime/tex/hyphen.tex"
@@ -92,6 +108,13 @@ cp "$work/src/knuth/lib/null.tex" "$output/runtime/tex/null.tex"
 cp "$repo/kertex_T/tex/lib/hyperbasics.tex" \
   "$output/runtime/tex/hyperbasics.tex"
 cp "$target_obj/tex/bin1/initex/tex.pool" "$output/runtime/pool/tex.pool"
+cp "$work/src/knuth/lib/plain.mf" "$output/runtime/mf/plain.mf"
+cp "$repo/kertex_T/mf/lib/modes.mf" "$output/runtime/mf/modes.mf"
+cp "$target_obj/mf/bin1/inimf/mf.pool" "$output/runtime/pool/mf.pool"
+cp "$repo/kertex_T/mp/lib/"*.mp "$output/runtime/mp/"
+cp "$target_obj/mp/bin1/inimp/mp.pool" "$output/runtime/pool/mp.pool"
+cp "$target_obj/prote/bin1/ini/tex.pool" "$output/runtime/pool/prote.pool"
+cp "$target_obj/etex/bin1/einitex/tex.pool" "$output/runtime/pool/etex.pool"
 
 # Plain TeX loads its Computer Modern metrics while plain.fmt is created.
 # The kerTeX build produces those metrics in the object tree; flattening the
@@ -157,31 +180,6 @@ if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
   exit 4
 fi
 
-# pp2rc represents Pascal arrays with nonzero lower bounds by forming C
-# pointers before their backing arrays. Besides being undefined C, TinyCC's
-# ARM64 backend materializes the negative byte displacement through a W
-# register. The resulting zero-extension turns the displacement into a value
-# exactly 4 GiB too large and makes initex fault during initialize(). Keep the
-# generated indexing unchanged, but reserve the unused leading elements so the
-# logical Pascal indices are valid C array indices.
-for tex_header in \
-  "$output/tex/bin1/initex/texd.h" \
-  "$output/tex/bin1/virtex/texd.h"
-do
-  if ! grep -q -F '#define xeqlevel (zzzad -422593)' "$tex_header" ||
-     ! grep -q -F '  zzzad[844]  ;' "$tex_header" ||
-     ! grep -q -F '#define hash (zzzae -514)' "$tex_header" ||
-     ! grep -q -F '  zzzae[419697]  ;' "$tex_header"
-  then
-    echo "Unexpected generated TeX array layout: $tex_header" >&2
-    exit 5
-  fi
-  sed -i \
-    -e 's/^#define xeqlevel (zzzad -422593)$/#define xeqlevel zzzad/' \
-    -e 's/^  zzzad\[844\]  ;$/  zzzad[423437]  ;/' \
-    -e 's/^#define hash (zzzae -514)$/#define hash zzzae/' \
-    -e 's/^  zzzae\[419697\]  ;$/  zzzae[420211]  ;/' \
-    "$tex_header"
-done
+sh "$repo/tools/fix-generated-array-layout.sh" "$output"
 
 printf '%s\n' "$target_obj" >"$output/.generator-origin"

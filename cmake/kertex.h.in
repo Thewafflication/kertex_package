@@ -4,7 +4,10 @@
 #define strtonum strtonum_
 #define remainder remainder_
 #define getline getline_
-#define SYSTEM_ENCODING 0
+#define RK_ICONV_ASCII "ASCII"
+#define RK_ICONV_EBCDIC "EBCDIC"
+#define RK_ICONV_UTF_8 "UTF-8"
+#define SYSTEM_ENCODING RK_ICONV_ASCII
 #define DIR_SEP "/"
 #define DIR_SEP_CHAR '/'
 #define CURDIR "./"
@@ -17,5 +20,6 @@
 #define KERTEX_BINDIR "bin"
 #define KX_EXIT_SUCCESS 0
 #define KX_EXIT_FAILURE 1
+#define FIXPT
 
 #endif

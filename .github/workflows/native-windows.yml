@@ -9,7 +9,7 @@ jobs:
   generate:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install generator prerequisites
@@ -38,7 +38,7 @@ jobs:
           tail -n 200 out/generate-kertex-sources.log
           echo '::endgroup::'
           exit "$status"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: kertex-generation-log
@@ -47,12 +47,12 @@ jobs:
       - name: Acquire and assemble pinned LaTeX runtime
         shell: pwsh
         run: ./tools/Get-LatexRuntime.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kertex-generated-c
           path: out/generated
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kertex-latex-runtime
           path: out/latex-runtime
@@ -72,16 +72,16 @@ jobs:
           - arch: arm64
             runner: windows-11-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: kertex-generated-c
           path: out/generated
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: kertex-latex-runtime
           path: out/latex-runtime
@@ -295,13 +295,13 @@ jobs:
         shell: powershell
         run: Remove-Item (Join-Path $env:RUNNER_TEMP 'kertex-release.private') -Force -ErrorAction SilentlyContinue
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kertex-windows-${{ matrix.arch }}
           path: out/install/${{ matrix.arch }}-release
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.arch == 'x64'
         with:
           name: wsp-latex-visual-comparison
@@ -310,7 +310,7 @@ jobs:
             out/wsp-comparison-x64/visual-diffs
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kertex-wpm-${{ matrix.arch }}
           path: out/packages/kertex-${{ matrix.arch }}-*.zip
@@ -325,9 +325,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: kertex-wpm-*
           path: release-assets

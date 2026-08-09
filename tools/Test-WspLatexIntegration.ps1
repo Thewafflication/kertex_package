@@ -24,6 +24,21 @@ function Resolve-Tool([string] $Path) {
     if (-not $command) { throw "Comparison tool was not found: $Path" }
     return $command.Source
 }
+function Invoke-NativeCaptured([string] $FilePath, [string[]] $ArgumentList) {
+    # Windows PowerShell 5.1 wraps redirected native stderr as ErrorRecord
+    # objects. Capture those records without allowing warnings to terminate the
+    # script, then let the native process exit code remain authoritative.
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = & $FilePath @ArgumentList 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    return [pscustomobject]@{ Output = $output; ExitCode = $exitCode }
+}
 
 $pandocPath = Resolve-Tool (Resolve-Repo $Pandoc)
 $pdfLatexPath = Resolve-Tool $PdfLatex
@@ -67,22 +82,13 @@ try {
     Push-Location $referenceDirectory
     try {
         foreach ($pass in 1..4) {
-            # Windows PowerShell 5.1 wraps native stderr as ErrorRecord objects.
-            # MiKTeX emits a harmless elevated-process warning there, so capture it
-            # under Continue and use the native exit code as the authoritative gate.
-            $savedErrorActionPreference = $ErrorActionPreference
-            try {
-                $ErrorActionPreference = 'Continue'
-                $output = & $pdfLatexPath -interaction=nonstopmode -halt-on-error `
-                    -recorder wsp-documentation.tex 2>&1
-                $pdfLatexExitCode = $LASTEXITCODE
-            }
-            finally {
-                $ErrorActionPreference = $savedErrorActionPreference
-            }
-            $output | Set-Content -LiteralPath "pass-$pass.stdout.txt" -Encoding utf8
-            if ($pdfLatexExitCode -ne 0) {
-                throw "Reference pdfLaTeX pass $pass failed with exit code $pdfLatexExitCode."
+            $result = Invoke-NativeCaptured $pdfLatexPath @(
+                '-interaction=nonstopmode', '-halt-on-error', '-recorder',
+                'wsp-documentation.tex'
+            )
+            $result.Output | Set-Content -LiteralPath "pass-$pass.stdout.txt" -Encoding utf8
+            if ($result.ExitCode -ne 0) {
+                throw "Reference pdfLaTeX pass $pass failed with exit code $($result.ExitCode)."
             }
         }
     }
@@ -101,14 +107,17 @@ finally {
 
 Push-Location $nativeDirectory
 try {
-    $firstDvips = & $dvipsPath -Ppdf -G0 -o wsp-documentation.ps wsp-documentation.dvi 2>&1
-    $firstDvips | Set-Content -LiteralPath 'dvips-pass-1.txt' -Encoding utf8
-    if ($LASTEXITCODE -ne 0 -and -not (Test-Path -LiteralPath 'wsp-documentation.out.ps')) {
+    $dvipsArguments = @('-Ppdf', '-G0', '-o', 'wsp-documentation.ps', 'wsp-documentation.dvi')
+    $firstDvips = Invoke-NativeCaptured $dvipsPath $dvipsArguments
+    $firstDvips.Output | Set-Content -LiteralPath 'dvips-pass-1.txt' -Encoding utf8
+    if ($firstDvips.ExitCode -ne 0 -and -not (Test-Path -LiteralPath 'wsp-documentation.out.ps')) {
         throw 'The first test-only dvips pass failed before producing its pdfmark header.'
     }
-    $secondDvips = & $dvipsPath -Ppdf -G0 -o wsp-documentation.ps wsp-documentation.dvi 2>&1
-    $secondDvips | Set-Content -LiteralPath 'dvips-pass-2.txt' -Encoding utf8
-    if ($LASTEXITCODE -ne 0) { throw 'The final test-only dvips pass failed.' }
+    $secondDvips = Invoke-NativeCaptured $dvipsPath $dvipsArguments
+    $secondDvips.Output | Set-Content -LiteralPath 'dvips-pass-2.txt' -Encoding utf8
+    if ($secondDvips.ExitCode -ne 0) {
+        throw "The final test-only dvips pass failed with exit code $($secondDvips.ExitCode)."
+    }
 
     $gsArguments = @(
         '-q', '-dSAFER', '-dBATCH', '-dNOPAUSE', '-sDEVICE=pdfwrite',

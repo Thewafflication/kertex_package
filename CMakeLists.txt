@@ -11,12 +11,23 @@ add_custom_target(download-sources
   COMMENT "Downloading and verifying the official kerTeX source bundle"
   VERBATIM
 )
+add_custom_target(download-latex-sources
+  COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
+    -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/Get-LatexRuntime.ps1"
+    -AcquireOnly
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Downloading and verifying the pinned LaTeX source archives"
+  VERBATIM
+)
+add_dependencies(download-sources download-latex-sources)
 
 set(KERTEX_ARCH "x86" CACHE STRING "Target architecture: x86, x64, or arm64")
 set_property(CACHE KERTEX_ARCH PROPERTY STRINGS x86 x64 arm64)
 set(KERTEX_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/kertex_T" CACHE PATH "kertex_T source directory")
 set(KERTEX_GENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/generated" CACHE PATH "Host-generated kerTeX object tree")
 set(KERTEX_RUNTIME_ROOT "${KERTEX_GENERATED_ROOT}/runtime" CACHE PATH "Host-generated kerTeX runtime tree")
+set(KERTEX_LATEX_RUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/latex-runtime"
+  CACHE PATH "Acquired pinned LaTeX runtime tree")
 set(KERTEX_PACKAGE_VERSION "0.0.0-local" CACHE STRING "Semantic product and WPM package version")
 if(NOT KERTEX_PACKAGE_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)([-+].*)?$")
   message(FATAL_ERROR "KERTEX_PACKAGE_VERSION must be semantic: ${KERTEX_PACKAGE_VERSION}")
@@ -131,6 +142,7 @@ endif()
 target_link_libraries(kertex_wcrt INTERFACE "${KERTEX_TCC_ROOT}/lib/kernel32.def")
 
 function(kertex_program name)
+  cmake_parse_arguments(KERTEX_PROGRAM "NO_INSTALL" "" "" ${ARGN})
   set(KERTEX_RESOURCE_NAME "${name}")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/resources")
   set(_resource_source "${CMAKE_BINARY_DIR}/resources/${name}.rc")
@@ -142,7 +154,7 @@ function(kertex_program name)
     COMMENT "Compiling ${name}.exe version information"
     VERBATIM)
   add_custom_target(${name}_resource DEPENDS "${_resource_object}")
-  add_executable(${name} ${ARGN})
+  add_executable(${name} ${KERTEX_PROGRAM_UNPARSED_ARGUMENTS})
   add_dependencies(${name} ${name}_resource)
   add_custom_command(TARGET ${name} POST_BUILD
     COMMAND "${KERTEX_PWSH_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
@@ -154,7 +166,9 @@ function(kertex_program name)
   set_property(TARGET ${name} PROPERTY C_STANDARD_REQUIRED ON)
   set_property(TARGET ${name} PROPERTY C_EXTENSIONS ON)
   target_link_libraries(${name} PRIVATE kertex_wcrt)
-  install(TARGETS ${name} RUNTIME DESTINATION bin)
+  if(NOT KERTEX_PROGRAM_NO_INSTALL)
+    install(TARGETS ${name} RUNTIME DESTINATION bin)
+  endif()
 endfunction()
 
 kertex_program(mptotex "${KERTEX_SOURCE_DIR}/mpware/bin1/mptotex/main.c")
@@ -333,7 +347,85 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
     itex tex 14 "${KERTEX_SOURCE_DIR}/etex/bin1/evirtex/extra.c"
     "${KERTEX_SOURCE_DIR}/tex/bin1")
 
+  function(kertex_latex_engine name generated_directory extra_source initialize)
+    set(_engine_sources "${generated_directory}/itex.c")
+    foreach(_part RANGE 0 14)
+      list(APPEND _engine_sources "${generated_directory}/tex${_part}.c")
+    endforeach()
+    if(NOT EXISTS "${generated_directory}/itex.c")
+      message(WARNING "Generated ${name} sources missing: ${generated_directory}")
+      return()
+    endif()
+    if(initialize)
+      kertex_program(${name} NO_INSTALL ${_engine_sources} "${extra_source}")
+    else()
+      kertex_program(${name} ${_engine_sources} "${extra_source}")
+    endif()
+    target_include_directories(${name} PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}"
+      "${KERTEX_GENERATED_ROOT}"
+      "${generated_directory}"
+      "${KERTEX_SOURCE_DIR}/tex/bin1"
+      "${KERTEX_SOURCE_DIR}/lib1/web"
+      "${KERTEX_SOURCE_DIR}/lib1/pascal")
+    target_compile_definitions(${name} PRIVATE STAT)
+    if(initialize)
+      target_compile_definitions(${name} PRIVATE INITEX)
+    endif()
+    target_link_libraries(${name} PRIVATE kertex_web kertex_pascal)
+  endfunction()
+
+  kertex_latex_engine(latex_init "${KERTEX_GENERATED_ROOT}/latex/bin1/ini"
+    "${KERTEX_SOURCE_DIR}/tex/bin1/initex/extra.c" TRUE)
+  kertex_latex_engine(latex "${KERTEX_GENERATED_ROOT}/latex/bin1/vir"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/latex-extra.c" FALSE)
+
   set(KERTEX_NATIVE_RUNTIME_ROOT "${CMAKE_BINARY_DIR}/runtime")
+
+  set(_kertex_latex_format_work "${CMAKE_BINARY_DIR}/latex-format-work")
+  set(_kertex_native_latex_format "${KERTEX_NATIVE_RUNTIME_ROOT}/lib/latex.fmt")
+  set(_kertex_native_latex_provenance
+    "${KERTEX_NATIVE_RUNTIME_ROOT}/lib/latex.fmt.provenance")
+  file(MAKE_DIRECTORY "${_kertex_latex_format_work}")
+  if(TARGET latex_init AND IS_DIRECTORY "${KERTEX_LATEX_RUNTIME_ROOT}/prote/latex"
+      AND EXISTS "${KERTEX_LATEX_RUNTIME_ROOT}/pool/latex.pool"
+      AND IS_DIRECTORY "${KERTEX_LATEX_RUNTIME_ROOT}/fonts/latex")
+    file(GLOB_RECURSE _kertex_latex_runtime_files CONFIGURE_DEPENDS
+      "${KERTEX_LATEX_RUNTIME_ROOT}/prote/latex/*"
+      "${KERTEX_LATEX_RUNTIME_ROOT}/fonts/latex/*")
+    list(APPEND _kertex_latex_runtime_files
+      "${KERTEX_LATEX_RUNTIME_ROOT}/pool/latex.pool")
+    add_custom_command(OUTPUT
+        "${_kertex_native_latex_format}" "${_kertex_native_latex_provenance}"
+      COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "${_kertex_latex_format_work}" "${KERTEX_NATIVE_RUNTIME_ROOT}/lib"
+      COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${KERTEX_LATEX_RUNTIME_ROOT}/prote/latex" "${_kertex_latex_format_work}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${KERTEX_LATEX_RUNTIME_ROOT}/fonts/latex" "${_kertex_latex_format_work}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${KERTEX_LATEX_RUNTIME_ROOT}/pool/latex.pool"
+        "${_kertex_latex_format_work}/latex.pool"
+      COMMAND "${CMAKE_COMMAND}" -E env
+        "FORCE_SOURCE_DATE=1" "SOURCE_DATE_EPOCH=D:20260101000000Z"
+        "$<TARGET_FILE:latex_init>" "**\\input ./latex.ltx"
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "${_kertex_latex_format_work}/latex.fmt" "${_kertex_native_latex_format}"
+      COMMAND "${CMAKE_COMMAND}"
+        -DKERTEX_FORMAT=${_kertex_native_latex_format}
+        -DKERTEX_PROVENANCE=${_kertex_native_latex_provenance}
+        -DKERTEX_ARCH=${KERTEX_ARCH}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteFormatProvenance.cmake"
+      WORKING_DIRECTORY "${_kertex_latex_format_work}"
+      DEPENDS latex_init ${_kertex_latex_runtime_files}
+      COMMENT "Generating architecture-native LaTeX format"
+      VERBATIM)
+    add_custom_target(latex_format ALL DEPENDS
+      "${_kertex_native_latex_format}" "${_kertex_native_latex_provenance}")
+  elseif(TARGET latex_init)
+    message(FATAL_ERROR
+      "Pinned LaTeX runtime is missing. Run tools/Get-LatexRuntime.ps1 after source generation.")
+  endif()
 
   set(_kertex_mf_format_work "${CMAKE_BINARY_DIR}/mf-format-work")
   set(_kertex_native_mf_base "${KERTEX_NATIVE_RUNTIME_ROOT}/lib/plain.base")
@@ -473,6 +565,17 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
         -DKERTEX_TEST_DIR=${CMAKE_BINARY_DIR}/tests/plain-tex
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/PlainTeXSmoke.cmake")
   endif()
+  if(TARGET latex AND TARGET latex_format AND TARGET dvitype)
+    add_test(NAME latex-smoke
+      COMMAND "${CMAKE_COMMAND}"
+        -DKERTEX_LATEX=$<TARGET_FILE:latex>
+        -DKERTEX_DVITYPE=$<TARGET_FILE:dvitype>
+        -DKERTEX_RUNTIME_ROOT=${KERTEX_LATEX_RUNTIME_ROOT}
+        -DKERTEX_FORMAT_ROOT=${KERTEX_NATIVE_RUNTIME_ROOT}
+        -DKERTEX_TEST_INPUT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/latex-smoke.tex
+        -DKERTEX_TEST_DIR=${CMAKE_BINARY_DIR}/tests/latex
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LatexSmoke.cmake")
+  endif()
   if(TARGET virmf AND TARGET virmp AND TARGET einitex AND TARGET iniprote
       AND TARGET plain_mf_base AND TARGET plain_mp_mem)
     add_test(NAME additional-engine-smokes
@@ -488,6 +591,15 @@ if(EXISTS "${KERTEX_GENERATED_ROOT}/web/bin1/tangle/tangle.c")
   endif()
 else()
   message(STATUS "Generated WEB sources not found; building source-native utilities only")
+endif()
+
+if(IS_DIRECTORY "${KERTEX_LATEX_RUNTIME_ROOT}")
+  install(DIRECTORY "${KERTEX_LATEX_RUNTIME_ROOT}/" DESTINATION share/kertex)
+endif()
+if(TARGET latex_format)
+  install(FILES
+    "${_kertex_native_latex_format}" "${_kertex_native_latex_provenance}"
+    DESTINATION bin/lib)
 endif()
 
 install(DIRECTORY "${KERTEX_SOURCE_DIR}/fonts/" DESTINATION share/kertex/fonts)

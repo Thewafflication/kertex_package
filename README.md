@@ -1,7 +1,9 @@
 # kerTeX native Windows build
 
-This repository is adding a native Windows CMake port of kerTeX using the
-WPM-packaged TinyCC and WCRT toolchain. The target matrix is:
+This repository provides a native Windows CMake port of kerTeX using the
+WPM-packaged TinyCC and WCRT toolchain. It packages Plain TeX and a focused
+LaTeX runtime capable of compiling Pandoc's normal WSP LaTeX output to DVI.
+The target matrix is:
 
 | Target | Intended Windows range |
 |---|---|
@@ -24,14 +26,15 @@ Replace `x86` with `x64` or `arm64` for the other targets. `WPM_TCC_ROOT` and
 `WPM_WCRT_ROOT` can select package trees outside their standard Program Files
 locations.
 
-Download the pinned upstream bundle locally with:
+Download the pinned upstream kerTeX bundle and all checksum-locked LaTeX
+source/license archives locally with:
 
 ```powershell
 cmake --build out/build/x86-release --target download-sources
 ```
 
 The download is accepted only when its SHA-256 is
-`B87408CC963BE3B013BE588935861771C7ACCA011BECF2888FA9629C1B97B3B4`.
+`EE42DEB024636963B9AB2322F3FC7EBE04710FF23B7F73B41C880F71E26A1CE5`.
 Source generation currently requires a POSIX host with `make`, a C compiler,
 flex, bison, and `ed`. From WSL or Linux, generate the shared tree with:
 
@@ -41,6 +44,12 @@ sh tools/generate-kertex-sources.sh \
 ```
 
 Reconfigure a Windows preset after `out/generated` has been populated.
+Assemble the LaTeX runtime before configuring CMake; once the archives have
+been acquired, this step is offline:
+
+```powershell
+.\tools\Get-LatexRuntime.ps1 -Offline
+```
 
 For a local build equivalent to the CI source-generation and Windows build
 stages, install WSL with `make`, a C compiler, flex, bison, and `ed`, then run:
@@ -49,13 +58,14 @@ stages, install WSL with `make`, a C compiler, flex, bison, and `ed`, then run:
 .\tools\Build-Native.ps1
 ```
 
-The script verifies or downloads the pinned bundle, generates the shared C and
-runtime tree through WSL, fresh-configures every architecture executable on the
-local host, builds and installs them, runs CTest, verifies the expected native
-inventory, and checks every generated PE file. An
+The script verifies or downloads all pinned sources, generates the shared C and
+runtime tree through WSL, assembles the LaTeX closure before CMake, fresh-configures
+every architecture executable on the local host, builds and installs it, runs
+CTest and a clean-install LaTeX smoke, verifies the native inventory, and checks
+every generated PE file. An
 x64 host builds x86 and x64 by default; an ARM64 host builds all three. ARM64
 format generation requires an ARM64 Windows host because the build executes the
-target `initex.exe`. Pass `-Architecture x64` to select architectures or
+target initialization engines. Pass `-Architecture x64` to select architectures or
 `-SkipGeneration` to reuse the existing `out/generated` tree.
 
 See [Native `initex` Plain-format debugging](docs/initex-plain-format-debugging.md)
@@ -90,6 +100,38 @@ git -C kertex_T update-index --no-skip-worktree -- `
   mp/lib/charlib/LH mp/lib/charlib/lh
 ```
 
+## Compile a LaTeX file
+
+After installing the package and opening a new terminal so the WPM environment
+is visible, compile a LaTeX input to DVI with:
+
+```powershell
+latex document.tex
+```
+
+`latex.exe` selects `latex.fmt` automatically; an explicit `&latex` argument is
+not required. The package includes LaTeX 2020-10-01 patch level 4 and the exact
+170-file runtime closure captured for Pandoc 3.10.1 and WSP commit
+`9b7a9733f0566ef44f84305ea07694998fd76fa2`. Runtime lookup uses relocatable
+KerTeX `KXPATH` files. It does not use MiKTeX, TeX Live, Cygwin, WSL, or a POSIX
+shell after installation.
+
+The primary output is DVI. The included `dvips.exe` still does not constitute a
+complete packaged PostScript/PDF conversion product; optional local validation
+uses external dvips and Ghostscript to render comparison images. Native PDF
+output is not provided.
+
+Modern LaTeX and Pandoc require string/file primitives that stock evirtex does
+not implement. The dedicated LaTeX executable therefore uses KerTeX's native
+Prote source set (e-TeX plus those primitives), with a small command adapter
+that selects `latex.fmt` by default. `evirtex.exe` remains available and
+unchanged for its existing purpose; no redundant `elatex.exe` is installed.
+
+See [native build instructions](docs/native-build.md),
+[runtime environment](docs/runtime-environment.md),
+[WPM package details](docs/wpm-package.md), and
+[WSP validation evidence](docs/wsp-latex-validation.md).
+
 ## Compile a Plain TeX file
 
 After installing the package and opening a new terminal so the WPM environment
@@ -103,15 +145,16 @@ The native package includes `plain.fmt`, the core Plain TeX inputs, and the
 font metrics needed during compilation. Each architecture generates and tests
 its own `plain.fmt` with the target `initex`; format dumps are not shared across
 x86, x64, and ARM64 packages. The native `dvips` executable is built, although
-its runtime PostScript resources and end-to-end DVI conversion are not yet
-packaged and tested. PDF output is not included yet.
+its complete PostScript conversion runtime is not packaged. PDF output is not
+included.
 
 The port always builds the source-native `mptotex` and `mptotr` utilities.
-When the generated tree is present it builds 33 native executables, including
+When the generated tree is present it builds 34 installed native executables,
+including `latex.exe`,
 the CWEB tools (`ctangle`, `cweave`, and `cwmerge`), METAFONT (`inimf` and
 `virmf`), MetaPost (`inimp` and `virmp`), Prote (`iniprote` and `virprote`),
 and e-TeX (`einitex` and `evirtex`). It also creates architecture-native
-`plain.fmt`, `plain.base`, and `plain.mem` files during the build.
+`latex.fmt`, `plain.fmt`, `plain.base`, and `plain.mem` files during the build.
 
 The native MF and MetaPost builds use kerTeX's fixed-point arithmetic mode.
 Because TinyCC does not reliably emit configured-header dependencies, rebuild
@@ -121,8 +164,10 @@ GitHub Actions additionally downloads the pinned official source bundle,
 verifies its SHA-256 digest, and runs `tools/generate-kertex-sources.sh` on an
 Ubuntu host. The resulting C tree is shared by all three Windows jobs. The
 generated-program slice includes WEB and the standalone WEB-derived utilities,
-the TeX engines, CWEB, METAFONT, MetaPost, Prote, and e-TeX. Complete
-DVI-to-PostScript runtime packaging and PDF output remain future slices.
+the TeX engines, CWEB, METAFONT, MetaPost, Prote, and e-TeX. Every architecture
+job runs the focused LaTeX smoke, clean-install smoke, and exact WSP DVI build.
+The x64 job additionally compares reference pdfLaTeX output with rendered DVI
+on seven representative pages using checked thresholds.
 
 Release targets link WCRT statically with `-nostdlib` and use WCRT's packaged
 console startup object as the PE entry point. `tools/Verify-Pe.ps1`

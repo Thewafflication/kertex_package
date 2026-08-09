@@ -28,6 +28,8 @@ if (-not (Test-Path -LiteralPath $binDirectory -PathType Container) -or
 if (-not (Test-Path -LiteralPath $shareDirectory -PathType Container)) {
     throw "The KerTeX install tree has no runtime data: $shareDirectory"
 }
+& (Join-Path $PSScriptRoot 'Verify-NativeInstall.ps1') `
+    -InstallRoot $payload -Architecture $Architecture | Out-Null
 
 $staging = Join-Path $repositoryRoot "out/wpm-staging/$Architecture"
 $packageOutput = Join-Path $repositoryRoot $PackageRoot
@@ -119,6 +121,30 @@ try {
     $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
     foreach ($required in @('.wpm/package.txt', '.wpm/install.cmd', '.wpm/remove.cmd')) {
         if ($required -notin $entries) { throw "KerTeX package is missing $required" }
+    }
+    foreach ($required in @(
+            'bin/latex.exe', 'bin/lib/latex.fmt', 'bin/lib/latex.fmt.provenance',
+            'share/kertex/prote/KXPATH', 'share/kertex/fonts/KXPATH',
+            'share/kertex/licenses/latex/lppl.tex',
+            'share/kertex/licenses/latex/OFL.txt',
+            'share/kertex/licenses/latex/GUST-FONT-LICENSE.TXT',
+            'share/kertex/licenses/latex/README-Computer-Modern.txt',
+            'share/kertex/licenses/latex/COPYRIGHT-EC-Fonts.txt',
+            'share/kertex/licenses/latex/MANIFEST-EC-Fonts.txt',
+            'share/kertex/licenses/latex/COPYRIGHTS.md',
+            'share/kertex/licenses/latex/sources.lock',
+            'share/kertex/licenses/latex/license-sources.lock',
+            'share/kertex/licenses/latex/runtime-manifest.txt')) {
+        if ($required -notin $entries) { throw "KerTeX package is missing $required" }
+    }
+    $runtimeManifest = Get-Content -LiteralPath `
+        (Join-Path $repositoryRoot 'third_party/latex/runtime-manifest.txt') |
+        Where-Object { $_ -and -not $_.StartsWith('#') }
+    foreach ($entry in $runtimeManifest) {
+        $runtimePath = 'share/kertex/' + (($entry -split '\|', 2)[1])
+        if ($runtimePath -notin $entries) {
+            throw "KerTeX package is missing pinned runtime file $runtimePath"
+        }
     }
     if (-not ($entries | Where-Object { $_ -match '^bin/.+\.exe$' })) {
         throw 'KerTeX package contains no Windows executables.'

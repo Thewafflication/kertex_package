@@ -1,0 +1,7 @@
+# Pinned WSP visual/integration fixture
+wsp-commit=9b7a9733f0566ef44f84305ea07694998fd76fa2
+pandoc-version=3.10.1
+pdf-engine-version=MiKTeX-pdfTeX 4.27 (MiKTeX 26.5)
+build-date=2026-01-01
+version=0.0.0-test
+expected-pages=101

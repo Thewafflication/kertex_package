@@ -68,10 +68,24 @@ if (-not $SkipGeneration) {
     # Keep the disposable upstream checkout on WSL's case-sensitive filesystem.
     # kerTeX contains files whose names differ only by case, so generator scratch
     # trees on the usual Windows filesystem cannot be cleaned or overlaid safely.
-    & wsl.exe env 'KERTEX_GENERATOR_WORK=/tmp/kertex-package-generator' `
-        sh $generator $wslBundle $wslRepository $wslGenerated
+    # Strip CR bytes while streaming so an existing Windows checkout made before
+    # the repository's LF policy was added remains usable without a fresh clone.
+    $runGenerator = 'tr -d "\015" < "$KERTEX_GENERATOR_SCRIPT" > /tmp/kertex-package-generator.sh && sh /tmp/kertex-package-generator.sh "$KERTEX_GENERATOR_BUNDLE" "$KERTEX_GENERATOR_REPOSITORY" "$KERTEX_GENERATOR_OUTPUT"'
+    & wsl.exe --exec env `
+        'KERTEX_GENERATOR_WORK=/tmp/kertex-package-generator' `
+        "KERTEX_GENERATOR_SCRIPT=$generator" `
+        "KERTEX_GENERATOR_BUNDLE=$wslBundle" `
+        "KERTEX_GENERATOR_REPOSITORY=$wslRepository" `
+        "KERTEX_GENERATOR_OUTPUT=$wslGenerated" `
+        sh -c $runGenerator
     if ($LASTEXITCODE -ne 0) { throw 'WSL kerTeX source generation failed' }
 }
+
+# Source acquisition is complete before CMake begins. With the archives in
+# out/downloads/texlive-2020-final, subsequent configure/build/test/package
+# steps perform no network access.
+& (Join-Path $PSScriptRoot 'Get-LatexRuntime.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Pinned LaTeX runtime acquisition failed' }
 
 $cmake = Get-RequiredCommandPath -Name 'cmake.exe' -Fallback @(
     'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
@@ -92,7 +106,10 @@ foreach ($targetArchitecture in $Architecture) {
     if ($LASTEXITCODE -ne 0) { throw "CTest failed for $targetArchitecture" }
 
     $installRoot = "out/install/$targetArchitecture-release"
-    & (Join-Path $PSScriptRoot 'Verify-NativeInstall.ps1') -InstallRoot $installRoot
+    & (Join-Path $PSScriptRoot 'Verify-NativeInstall.ps1') `
+        -InstallRoot $installRoot -Architecture $targetArchitecture
+    & (Join-Path $PSScriptRoot 'Test-InstalledLatex.ps1') `
+        -InstallRoot $installRoot -Architecture $targetArchitecture
 
     Get-ChildItem "$installRoot/bin" -Filter '*.exe' |
         ForEach-Object {

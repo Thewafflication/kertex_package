@@ -96,6 +96,24 @@ rm -rf "$output"
 mkdir -p "$output"
 cp -a "$target_obj/." "$output/"
 
+# Modern LaTeX needs the file-query and string-comparison primitives supplied
+# by Prote.  Keep a dedicated generated copy so the normal Prote tools retain
+# their upstream .dgst interface while latex.exe uses the conventional .fmt
+# name and a separately patched latex.pool.
+mkdir -p "$output/latex/bin1"
+cp -a "$output/prote/bin1/ini" "$output/latex/bin1/ini"
+cp -a "$output/prote/bin1/vir" "$output/latex/bin1/vir"
+for directory in "$output/latex/bin1/ini" "$output/latex/bin1/vir"; do
+  sed -i \
+    -e 's|"plain\.dgst" , 10|"plain.fmt" , 9|' \
+    "$directory/itex.c"
+  sed -i \
+    -e 's|#define poolname "prote\.pool"|#define poolname "latex.pool"|' \
+    "$directory/texd.h"
+  grep -q '"plain.fmt" , 9' "$directory/itex.c"
+  grep -q '#define poolname "latex.pool"' "$directory/texd.h"
+done
+
 # Preserve the runtime inputs alongside the generated C tree.  The native
 # build consumes this relocatable layout instead of reaching back into the
 # temporary POSIX generator workspace.
@@ -180,6 +198,8 @@ if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
   exit 4
 fi
 
-sh "$repo/tools/fix-generated-array-layout.sh" "$output"
+normalized_layout_fix="$work/fix-generated-array-layout.sh"
+tr -d '\015' < "$repo/tools/fix-generated-array-layout.sh" > "$normalized_layout_fix"
+sh "$normalized_layout_fix" "$output"
 
 printf '%s\n' "$target_obj" >"$output/.generator-origin"

@@ -20,6 +20,13 @@ $pandocPath = Resolve-ProjectPath $Pandoc
 $outputFullPath = Resolve-ProjectPath $OutputPath
 $outputDirectory = Split-Path -Parent $outputFullPath
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+$fixtureLockPath = Join-Path $repositoryRoot 'third_party/wsp-fixture.lock'
+$fixture = @{}
+foreach ($line in Get-Content -LiteralPath $fixtureLockPath) {
+    if ($line -match '^([^#=]+)=(.*)$') { $fixture[$matches[1].Trim()] = $matches[2].Trim() }
+}
+$pdfEngineVersion = $fixture['pdf-engine-version']
+if (-not $pdfEngineVersion) { throw "Missing pdf-engine-version in $fixtureLockPath" }
 
 $sourceRevision = (& git -c "safe.directory=$($wspFullPath.Replace('\', '/'))" `
     -C $wspFullPath rev-parse HEAD).Trim()
@@ -43,7 +50,7 @@ $metadataHeader = Join-Path $temporaryDirectory 'metadata.tex'
     "| Source revision | $sourceRevision |"
     "| Build date | $BuildDate |"
     "| Pandoc | $pandocVersion |"
-    '| PDF engine | MiKTeX-pdfTeX 4.23 (MiKTeX 25.12) |'
+    "| PDF engine | $pdfEngineVersion |"
     '| Manifest | documentation/documentation-manifest.json |'
 ) | Set-Content -LiteralPath $buildInformation -Encoding utf8
 
@@ -80,7 +87,7 @@ foreach ($argument in @(
         "--metadata=source-revision:$sourceRevision",
         "--metadata=repository-url:$($manifest.repositoryUrl)",
         "--metadata=pandoc-version:$pandocVersion",
-        '--metadata=pdf-engine-version:MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)'
+        "--metadata=pdf-engine-version:$pdfEngineVersion"
     )) {
     $arguments.Add($argument)
 }

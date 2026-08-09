@@ -8,7 +8,7 @@ values are checked in at `third_party/wsp-fixture.lock`.
 `Generate-WspLatex.ps1` consumes the WSP documentation manifest, its ordered
 Markdown files, normal Pandoc LaTeX template, preamble, and internal-links Lua
 filter. The same generated `.tex` is compiled four times by reference
-MiKTeX-pdfTeX 4.23 (MiKTeX 25.12) and four times by packaged native
+MiKTeX-pdfTeX 4.27 (MiKTeX 26.5) and four times by packaged native
 `latex.exe`. The DVI is validated by packaged `dvitype`, rendered with
 test-only dvips and Ghostscript, and compared with `Compare-WspVisual.py`.
 

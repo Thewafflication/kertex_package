@@ -30,7 +30,12 @@ $pdfLatexPath = Resolve-Tool $PdfLatex
 $dvipsPath = Resolve-Tool $Dvips
 $ghostscriptPath = Resolve-Tool $Ghostscript
 $pythonPath = Resolve-Tool $Python
-$expectedPdfLatexVersion = 'MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)'
+$fixture = @{}
+foreach ($line in Get-Content -LiteralPath (Join-Path $repositoryRoot 'third_party/wsp-fixture.lock')) {
+    if ($line -match '^([^#=]+)=(.*)$') { $fixture[$matches[1].Trim()] = $matches[2].Trim() }
+}
+$expectedPdfLatexVersion = $fixture['pdf-engine-version']
+if (-not $expectedPdfLatexVersion) { throw 'Missing pdf-engine-version in third_party/wsp-fixture.lock.' }
 $pdfLatexVersion = (& $pdfLatexPath --version | Select-Object -First 1).Trim()
 if ($pdfLatexVersion -ne $expectedPdfLatexVersion) {
     throw "Reference pdfLaTeX version mismatch: expected '$expectedPdfLatexVersion', got '$pdfLatexVersion'."

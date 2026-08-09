@@ -117,8 +117,9 @@ KerTeX `KXPATH` files. It does not use MiKTeX, TeX Live, Cygwin, WSL, or a POSIX
 shell after installation.
 
 The primary output is DVI. The included `dvips.exe` still does not constitute a
-complete packaged PostScript/PDF conversion product; CI uses external dvips and
-Ghostscript only to render comparison images. Native PDF output is not provided.
+complete packaged PostScript/PDF conversion product; optional local validation
+uses external dvips and Ghostscript to render comparison images. Native PDF
+output is not provided.
 
 Modern LaTeX and Pandoc require string/file primitives that stock evirtex does
 not implement. The dedicated LaTeX executable therefore uses KerTeX's native

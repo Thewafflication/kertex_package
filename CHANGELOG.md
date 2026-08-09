@@ -10,5 +10,7 @@
   `KXPATH` layout, complete LPPL/OFL/GUST notices, and architecture provenance.
 - Added focused LaTeX, clean-install, exact WSP DVI, `dvitype`, and quantified
   PDF/DVI visual-equivalence tests.
+- Kept the PDF/DVI visual-equivalence comparison as an optional local test;
+  online CI validates the exact native WSP DVI fixture on every architecture.
 - Extended WPM archive verification and the native Windows CI architecture
   matrix for the LaTeX capability.

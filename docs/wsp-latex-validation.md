@@ -52,5 +52,5 @@ Run the full comparison by supplying test-only tool paths:
 ```
 
 CI runs the native WSP compilation on x86, x64, and ARM64. The visual renderer
-gate runs once on x64 because the target-native DVI content is separately
-validated in every architecture job.
+comparison is intentionally local-only because it depends on a separately
+installed reference MiKTeX, dvips, Ghostscript, PDFium, and Python toolchain.

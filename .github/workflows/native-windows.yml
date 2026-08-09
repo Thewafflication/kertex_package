@@ -237,34 +237,6 @@ jobs:
             -FormatRoot out/build/${{ matrix.arch }}-release/runtime `
             -OutputDirectory out/wsp-native-${{ matrix.arch }}
 
-      - name: Install x64 visual-comparison dependencies
-        if: matrix.arch == 'x64'
-        shell: powershell
-        run: |
-          choco install miktex --yes --no-progress
-          if ($LASTEXITCODE -ne 0) { throw 'Chocolatey failed to install MiKTeX' }
-          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-          $env:Path = "$machinePath;$userPath"
-          "PATH=$env:Path" | Add-Content -Path $env:GITHUB_ENV
-          initexmf --admin --set-config-value=[MPM]AutoInstall=1
-          if ($LASTEXITCODE -ne 0) { throw 'Could not enable MiKTeX package acquisition' }
-          ./tools/Get-Ghostscript.ps1
-          python -m pip install `
-            pypdf==6.10.0 pypdfium2==5.12.1 Pillow==12.2.0
-          if ($LASTEXITCODE -ne 0) { throw 'Could not install pinned visual comparison modules' }
-
-      - name: Compare reference PDF and rendered native DVI
-        if: matrix.arch == 'x64'
-        shell: powershell
-        run: |
-          $ghostscript = (Resolve-Path out/tools/ghostscript-10.07.1/bin/gswin64c.exe).Path
-          ./tools/Test-WspLatexIntegration.ps1 `
-            -PdfLatex (Get-Command pdflatex.exe).Source `
-            -Dvips (Get-Command dvips.exe).Source `
-            -Ghostscript $ghostscript `
-            -Python (Get-Command python.exe).Source
-
       - name: Prepare WPM release signing key
         if: startsWith(github.ref, 'refs/tags/')
         shell: powershell
@@ -299,15 +271,6 @@ jobs:
         with:
           name: kertex-windows-${{ matrix.arch }}
           path: out/install/${{ matrix.arch }}-release
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v7
-        if: matrix.arch == 'x64'
-        with:
-          name: wsp-latex-visual-comparison
-          path: |
-            out/wsp-comparison-x64/visual-report.json
-            out/wsp-comparison-x64/visual-diffs
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7

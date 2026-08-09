@@ -28,4 +28,5 @@ run `latex document.tex`; no post-install filename database or format command
 is required.
 
 The product output is DVI. External MiKTeX, dvips, Ghostscript, PDFium, and
-Python tools used by visual CI are not included in the WPM archive.
+Python tools used by optional local visual validation are not included in the
+WPM archive.

@@ -67,10 +67,23 @@ try {
     Push-Location $referenceDirectory
     try {
         foreach ($pass in 1..4) {
-            $output = & $pdfLatexPath -interaction=nonstopmode -halt-on-error `
-                -recorder wsp-documentation.tex 2>&1
+            # Windows PowerShell 5.1 wraps native stderr as ErrorRecord objects.
+            # MiKTeX emits a harmless elevated-process warning there, so capture it
+            # under Continue and use the native exit code as the authoritative gate.
+            $savedErrorActionPreference = $ErrorActionPreference
+            try {
+                $ErrorActionPreference = 'Continue'
+                $output = & $pdfLatexPath -interaction=nonstopmode -halt-on-error `
+                    -recorder wsp-documentation.tex 2>&1
+                $pdfLatexExitCode = $LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $savedErrorActionPreference
+            }
             $output | Set-Content -LiteralPath "pass-$pass.stdout.txt" -Encoding utf8
-            if ($LASTEXITCODE -ne 0) { throw "Reference pdfLaTeX pass $pass failed." }
+            if ($pdfLatexExitCode -ne 0) {
+                throw "Reference pdfLaTeX pass $pass failed with exit code $pdfLatexExitCode."
+            }
         }
     }
     finally { Pop-Location }

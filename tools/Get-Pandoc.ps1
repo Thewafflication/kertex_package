@@ -33,6 +33,10 @@ if (-not $pandoc) { throw 'Pinned Pandoc archive did not contain pandoc.exe.' }
 New-Item -ItemType Directory -Force -Path $destinationPath | Out-Null
 Copy-Item -Path (Join-Path $pandoc.DirectoryName '*') -Destination $destinationPath -Recurse
 Remove-Item -LiteralPath $temporary -Recurse -Force
-$version = (& (Join-Path $destinationPath 'pandoc.exe') --version | Select-Object -First 1).Trim()
+$pandocPath = Join-Path $destinationPath 'pandoc.exe'
+$versionOutput = @(& $pandocPath --version)
+if ($LASTEXITCODE -ne 0) { throw "Pinned Pandoc version check failed with exit code $LASTEXITCODE." }
+if (-not $versionOutput) { throw 'Pinned Pandoc version check returned no output.' }
+$version = ([string] $versionOutput[0]).Trim()
 if ($version -ne 'pandoc 3.10.1') { throw "Unexpected Pandoc version: $version" }
-(Join-Path $destinationPath 'pandoc.exe')
+$pandocPath

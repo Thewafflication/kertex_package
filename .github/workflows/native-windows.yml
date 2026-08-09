@@ -15,20 +15,24 @@ jobs:
       - name: Install generator prerequisites
         run: sudo apt-get update && sudo apt-get install -y bison flex ed
       - name: Download verified source bundle
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p out/downloads
-          curl --fail --location --proto '=https' --tlsv1.2 \
-            https://downloads.kergis.com/kertex/kertex_bundle.tar \
-            --output out/downloads/kertex_bundle.tar
-          echo 'b87408cc963be3b013be588935861771c7acca011becf2888fa9629c1b97b3b4  out/downloads/kertex_bundle.tar' | sha256sum --check
+          $log = 'out/generate-kertex-sources.log'
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          try {
+            ./tools/Get-KertexBundle.ps1 *>&1 |
+              Tee-Object -FilePath $log
+          } catch {
+            $_ | Out-String | Tee-Object -FilePath $log -Append
+            throw
+          }
       - name: Generate C sources
         shell: bash
         run: |
           set +e
           sh tools/generate-kertex-sources.sh \
             out/downloads/kertex_bundle.tar "$PWD" out/generated \
-            >out/generate-kertex-sources.log 2>&1
+            >>out/generate-kertex-sources.log 2>&1
           status=$?
           echo '::group::Generator log tail (last 200 lines)'
           tail -n 200 out/generate-kertex-sources.log

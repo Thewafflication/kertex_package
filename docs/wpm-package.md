@@ -14,7 +14,7 @@ Build an archive only after installing the selected architecture:
 
 ```powershell
 .\tools\Build-WpmPackage.ps1 `
-  -Architecture x64 -Version 0.99.26-ci.1
+  -Architecture x64 -Version 0.99.27-ci.1
 ```
 
 Before staging, the script runs native-install verification. It then reopens

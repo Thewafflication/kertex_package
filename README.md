@@ -34,7 +34,7 @@ cmake --build out/build/x86-release --target download-sources
 ```
 
 The download is accepted only when its SHA-256 is
-`B87408CC963BE3B013BE588935861771C7ACCA011BECF2888FA9629C1B97B3B4`.
+`EE42DEB024636963B9AB2322F3FC7EBE04710FF23B7F73B41C880F71E26A1CE5`.
 Source generation currently requires a POSIX host with `make`, a C compiler,
 flex, bison, and `ed`. From WSL or Linux, generate the shared tree with:
 

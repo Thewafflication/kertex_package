@@ -198,6 +198,8 @@ if grep -R -n -F "$work/" "$output" --include='*.c' --include='*.h'; then
   exit 4
 fi
 
-sh "$repo/tools/fix-generated-array-layout.sh" "$output"
+normalized_layout_fix="$work/fix-generated-array-layout.sh"
+tr -d '\015' < "$repo/tools/fix-generated-array-layout.sh" > "$normalized_layout_fix"
+sh "$normalized_layout_fix" "$output"
 
 printf '%s\n' "$target_obj" >"$output/.generator-origin"

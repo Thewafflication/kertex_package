@@ -68,8 +68,16 @@ if (-not $SkipGeneration) {
     # Keep the disposable upstream checkout on WSL's case-sensitive filesystem.
     # kerTeX contains files whose names differ only by case, so generator scratch
     # trees on the usual Windows filesystem cannot be cleaned or overlaid safely.
-    & wsl.exe env 'KERTEX_GENERATOR_WORK=/tmp/kertex-package-generator' `
-        sh $generator $wslBundle $wslRepository $wslGenerated
+    # Strip CR bytes while streaming so an existing Windows checkout made before
+    # the repository's LF policy was added remains usable without a fresh clone.
+    $runGenerator = 'tr -d "\015" < "$KERTEX_GENERATOR_SCRIPT" > /tmp/kertex-package-generator.sh && sh /tmp/kertex-package-generator.sh "$KERTEX_GENERATOR_BUNDLE" "$KERTEX_GENERATOR_REPOSITORY" "$KERTEX_GENERATOR_OUTPUT"'
+    & wsl.exe --exec env `
+        'KERTEX_GENERATOR_WORK=/tmp/kertex-package-generator' `
+        "KERTEX_GENERATOR_SCRIPT=$generator" `
+        "KERTEX_GENERATOR_BUNDLE=$wslBundle" `
+        "KERTEX_GENERATOR_REPOSITORY=$wslRepository" `
+        "KERTEX_GENERATOR_OUTPUT=$wslGenerated" `
+        sh -c $runGenerator
     if ($LASTEXITCODE -ne 0) { throw 'WSL kerTeX source generation failed' }
 }
 

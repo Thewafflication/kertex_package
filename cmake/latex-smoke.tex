@@ -1,0 +1,97 @@
+\documentclass[10pt,letterpaper,openany]{report}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{textcomp}
+\usepackage{lmodern}
+\usepackage{longtable,booktabs,array}
+\usepackage{fancyvrb}
+\usepackage[american]{babel}
+\usepackage{bookmark}
+\usepackage{xurl}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=teal}
+
+\title{Native KerTeX LaTeX Smoke Test}
+\author{kertex\_package}
+\date{2026-01-01}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter{Typesetting Features}\label{chap:features}
+\section{Text, lists, color, and links}
+Unicode input: café, naïve, résumé, and €100.  This sentence contains
+\textcolor{purple}{colored text}, a \href{https://example.com}{colored link},
+and a wrapping URL: \url{https://example.com/a/long/path/for/native-dvi-testing}.
+
+\begin{itemize}
+  \item A bulleted item.
+  \item A second item referring to Chapter~\ref{chap:features}.
+\end{itemize}
+\begin{enumerate}
+  \item First ordered item.
+  \item Second ordered item.
+\end{enumerate}
+
+\section{Mathematics}
+\begin{equation}\label{eq:quadratic}
+  x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}.
+\end{equation}
+Equation~\ref{eq:quadratic} exercises math fonts and references.
+
+\section{Tables}
+\begin{longtable}{>{\bfseries}p{0.23\linewidth}p{0.63\linewidth}}
+\caption{A multipage booktabs-style table}\label{tab:long}\\
+\toprule
+Feature & Evidence \\
+\midrule
+\endfirsthead
+\toprule
+Feature & Evidence \\
+\midrule
+\endhead
+Geometry & Explicit letter-paper margins. \\
+Color & Purple text and teal hyperlinks. \\
+Mathematics & A numbered quadratic equation. \\
+Unicode & Accented Latin text and the euro symbol. \\
+Verbatim & A code block using FancyVerb. \\
+Lists & Ordered and unordered lists. \\
+Contents & A generated table of contents. \\
+References & Stabilized chapter, equation, and table references. \\
+Fonts & Latin Modern T1 text and Computer Modern mathematics. \\
+Long table & Repeated rows force the longtable machinery to calculate widths. \\
+Row 11 & Stable content. \\
+Row 12 & Stable content. \\
+Row 13 & Stable content. \\
+Row 14 & Stable content. \\
+Row 15 & Stable content. \\
+Row 16 & Stable content. \\
+Row 17 & Stable content. \\
+Row 18 & Stable content. \\
+Row 19 & Stable content. \\
+Row 20 & Stable content. \\
+Row 21 & Stable content. \\
+Row 22 & Stable content. \\
+Row 23 & Stable content. \\
+Row 24 & Stable content. \\
+Row 25 & Stable content. \\
+Row 26 & Stable content. \\
+Row 27 & Stable content. \\
+Row 28 & Stable content. \\
+Row 29 & Stable content. \\
+Row 30 & Stable content. \\
+\bottomrule
+\end{longtable}
+
+\section{Verbatim}
+\begin{Verbatim}[commandchars=\\\{\}]
+int main(void) {
+    return 0;
+}
+\end{Verbatim}
+
+Table~\ref{tab:long} completes the smoke fixture.
+\end{document}

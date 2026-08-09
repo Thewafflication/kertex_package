@@ -73,6 +73,12 @@ if (-not $SkipGeneration) {
     if ($LASTEXITCODE -ne 0) { throw 'WSL kerTeX source generation failed' }
 }
 
+# Source acquisition is complete before CMake begins. With the archives in
+# out/downloads/texlive-2020-final, subsequent configure/build/test/package
+# steps perform no network access.
+& (Join-Path $PSScriptRoot 'Get-LatexRuntime.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Pinned LaTeX runtime acquisition failed' }
+
 $cmake = Get-RequiredCommandPath -Name 'cmake.exe' -Fallback @(
     'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 )
@@ -92,7 +98,10 @@ foreach ($targetArchitecture in $Architecture) {
     if ($LASTEXITCODE -ne 0) { throw "CTest failed for $targetArchitecture" }
 
     $installRoot = "out/install/$targetArchitecture-release"
-    & (Join-Path $PSScriptRoot 'Verify-NativeInstall.ps1') -InstallRoot $installRoot
+    & (Join-Path $PSScriptRoot 'Verify-NativeInstall.ps1') `
+        -InstallRoot $installRoot -Architecture $targetArchitecture
+    & (Join-Path $PSScriptRoot 'Test-InstalledLatex.ps1') `
+        -InstallRoot $installRoot -Architecture $targetArchitecture
 
     Get-ChildItem "$installRoot/bin" -Filter '*.exe' |
         ForEach-Object {

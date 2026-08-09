@@ -40,10 +40,18 @@ jobs:
           name: kertex-generation-log
           path: out/generate-kertex-sources.log
           if-no-files-found: error
+      - name: Acquire and assemble pinned LaTeX runtime
+        shell: pwsh
+        run: ./tools/Get-LatexRuntime.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: kertex-generated-c
           path: out/generated
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kertex-latex-runtime
+          path: out/latex-runtime
           if-no-files-found: error
 
   build:
@@ -68,6 +76,11 @@ jobs:
         with:
           name: kertex-generated-c
           path: out/generated
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kertex-latex-runtime
+          path: out/latex-runtime
 
       - name: Install WPM
         shell: powershell
@@ -173,6 +186,10 @@ jobs:
           "KERTEX_PACKAGE_VERSION=$version" | Add-Content -Path $env:GITHUB_ENV
           Write-Host "kerTeX product/package version: $version"
 
+      - name: Acquire pinned Pandoc integration tool
+        shell: powershell
+        run: ./tools/Get-Pandoc.ps1
+
       - name: Configure and build
         shell: powershell
         run: |
@@ -186,16 +203,63 @@ jobs:
       - name: Verify native PE files
         shell: powershell
         run: |
-          ./tools/Verify-NativeInstall.ps1 -InstallRoot out/install/${{ matrix.arch }}-release
+          ./tools/Verify-NativeInstall.ps1 `
+            -InstallRoot out/install/${{ matrix.arch }}-release `
+            -Architecture ${{ matrix.arch }}
           Get-ChildItem out/install/${{ matrix.arch }}-release/bin/*.exe | ForEach-Object {
             ./tools/Verify-Pe.ps1 -Path $_.FullName -Architecture ${{ matrix.arch }}
           }
 
-      - name: Compile Plain TeX smoke document
+      - name: Run native engine smoke tests
         shell: powershell
         run: |
           ctest --test-dir out/build/${{ matrix.arch }}-release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Native engine smoke tests failed' }
+
+      - name: Test staged LaTeX install from a clean runtime root
+        shell: powershell
+        run: |
+          ./tools/Test-InstalledLatex.ps1 `
+            -InstallRoot out/install/${{ matrix.arch }}-release `
+            -Architecture ${{ matrix.arch }}
+
+      - name: Compile the exact WSP Pandoc LaTeX fixture to DVI
+        shell: powershell
+        run: |
+          ./tools/Generate-WspLatex.ps1
+          ./tools/Test-WspNativeLatex.ps1 `
+            -Latex out/build/${{ matrix.arch }}-release/bin/latex.exe `
+            -Dvitype out/build/${{ matrix.arch }}-release/bin/dvitype.exe `
+            -FormatRoot out/build/${{ matrix.arch }}-release/runtime `
+            -OutputDirectory out/wsp-native-${{ matrix.arch }}
+
+      - name: Install x64 visual-comparison dependencies
+        if: matrix.arch == 'x64'
+        shell: powershell
+        run: |
+          choco install miktex --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Chocolatey failed to install MiKTeX' }
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
+          "PATH=$env:Path" | Add-Content -Path $env:GITHUB_ENV
+          initexmf --admin --set-config-value=[MPM]AutoInstall=1
+          if ($LASTEXITCODE -ne 0) { throw 'Could not enable MiKTeX package acquisition' }
+          ./tools/Get-Ghostscript.ps1
+          python -m pip install `
+            pypdf==6.10.0 pypdfium2==5.12.1 Pillow==12.2.0
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install pinned visual comparison modules' }
+
+      - name: Compare reference PDF and rendered native DVI
+        if: matrix.arch == 'x64'
+        shell: powershell
+        run: |
+          $ghostscript = (Resolve-Path out/tools/ghostscript-10.07.1/bin/gswin64c.exe).Path
+          ./tools/Test-WspLatexIntegration.ps1 `
+            -PdfLatex (Get-Command pdflatex.exe).Source `
+            -Dvips (Get-Command dvips.exe).Source `
+            -Ghostscript $ghostscript `
+            -Python (Get-Command python.exe).Source
 
       - name: Prepare WPM release signing key
         if: startsWith(github.ref, 'refs/tags/')
@@ -231,6 +295,15 @@ jobs:
         with:
           name: kertex-windows-${{ matrix.arch }}
           path: out/install/${{ matrix.arch }}-release
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'x64'
+        with:
+          name: wsp-latex-visual-comparison
+          path: |
+            out/wsp-comparison-x64/visual-report.json
+            out/wsp-comparison-x64/visual-diffs
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4

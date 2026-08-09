@@ -1,0 +1,4 @@
+# Test-only tools; these files are never installed in the WPM package.
+# name|version|url|sha256
+pandoc-windows-x64|3.10.1|https://github.com/jgm/pandoc/releases/download/3.10.1/pandoc-3.10.1-windows-x86_64.zip|4725a1883e2171c2e181e6fd45003acb59ca4e9cbe031fdd3b79ef0d697d36aa
+ghostscript-windows-x64|10.07.1|https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10071/gs10071w64.exe|3a4c28d0aac47aa7cccd35a5932c55110376e9dbd966898dde388b7faba444a4

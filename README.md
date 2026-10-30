@@ -217,3 +217,5 @@ That same resolved version is embedded in every executable's Windows
 Windows version maps to `major, minor, patch, build`; tagged releases use build
 zero and CI builds use the bounded Actions run number. The upstream kerTeX
 version from `kertex_T/CID` is retained separately as `SourceVersion`.
+
+<!-- Updated by worker commit -->

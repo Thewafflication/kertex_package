@@ -1,5 +1,7 @@
 # kerTeX native Windows build
 
+<!-- Added comment for validation commit -->
+
 This repository provides a native Windows CMake port of kerTeX using the
 WPM-packaged TinyCC and WCRT toolchain. It packages Plain TeX and a focused
 LaTeX runtime capable of compiling Pandoc's normal WSP LaTeX output to DVI.

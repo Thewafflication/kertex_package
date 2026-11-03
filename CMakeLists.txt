@@ -28,7 +28,7 @@ set(KERTEX_GENERATED_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/generated" CACHE PATH
 set(KERTEX_RUNTIME_ROOT "${KERTEX_GENERATED_ROOT}/runtime" CACHE PATH "Host-generated kerTeX runtime tree")
 set(KERTEX_LATEX_RUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/out/latex-runtime"
   CACHE PATH "Acquired pinned LaTeX runtime tree")
-set(KERTEX_PACKAGE_VERSION "0.0.0-local" CACHE STRING "Semantic product and WPM package version")
+set(KERTEX_PACKAGE_VERSION "0.1.0" CACHE STRING "Semantic product and WPM package version")
 if(NOT KERTEX_PACKAGE_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)([-+].*)?$")
   message(FATAL_ERROR "KERTEX_PACKAGE_VERSION must be semantic: ${KERTEX_PACKAGE_VERSION}")
 endif()

@@ -46,7 +46,7 @@ foreach ($source in $sources) {
         if ($Offline) { throw "Offline archive is missing: $archivePath" }
         Invoke-WebRequest -UseBasicParsing "$baseUrl/$archiveName" -OutFile $archivePath
     }
-    $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actualHash = ((certutil -hashfile $archivePath SHA256) | Select-String -Pattern '[a-f0-9]{64}') -replace '[^a-f0-9]', ''.ToLowerInvariant()
     if ($actualHash -ne $source.sha256) {
         throw "SHA-256 mismatch for $archiveName`: expected $($source.sha256), got $actualHash"
     }
@@ -57,7 +57,7 @@ foreach ($source in $licenseSources) {
         if ($Offline) { throw "Offline license archive is missing: $archivePath" }
         Invoke-WebRequest -UseBasicParsing "$baseUrl/$($source.archive)" -OutFile $archivePath
     }
-    $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actualHash = ((certutil -hashfile $archivePath SHA256) | Select-String -Pattern '[a-f0-9]{64}') -replace '[^a-f0-9]', ''.ToLowerInvariant()
     if ($actualHash -ne $source.sha256) {
         throw "SHA-256 mismatch for $($source.archive)`: expected $($source.sha256), got $actualHash"
     }

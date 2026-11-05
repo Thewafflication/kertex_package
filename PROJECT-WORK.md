@@ -2,7 +2,7 @@
 
 ## Current Status
 - **Branch**: `master` (up to date with `origin/master`)
-- **Last commit**: `93a546c` - Update KERTEX_PACKAGE_VERSION from 0.0.0-local to 0.1.0 initial release semver
+- **Last commit**: `bcf686a` - feat: add project work and agent tasks trackers per WSP-PROC-0012 adoption
 - **Working directory**: Clean with untracked `tests/__pycache__` directory
 
 ## Outstanding Work / Prerequisites
@@ -64,10 +64,12 @@ python -m pytest tests/test_version.py tests/test_cmake.py
 - **commit1ed30bc**: Added HTML README comment for commit validation - *not a functional milestone* (per monitoring notes)
 - **commit882eb2bd**: Pytest installed, all tests pass - but has zero file changes (per monitoring audit 2026-10-31)
 - **cdd3aca81**: Moved module-level version assertions into explicit `pytest test_version` function - test structure improvement only
+- **bcf686a**: Added PROJECT-WORK.md and AGENT-TASKS.md trackers per WSP-PROC-0012 adoption - planning adoption, not a successful native build
 
 ## Monitoring audit status
 - **2026-10-31**: commit882eb2bd4ae607689fee05e7de3ff6791446ccff matches live origin/master but has zero file changes - does not satisfy useful milestone requirement
 - **2026-11-01**: cdd3aca8140233712478f7522544e3477aabdaf6 moved test assertions into pytest function - collection structure improvement only
+- **2026-11-05**: bcf686a5aa623788731f7dd20672cc14e2a6dc92 published both work trackers - treat as planning adoption, not a successful native build
 - **Do not repeat**: empty commits, README markers, or comment-only changes to satisfy commit/push ceremony
 
 ## Next Concrete Experiment

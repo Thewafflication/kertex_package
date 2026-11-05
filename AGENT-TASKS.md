@@ -1,9 +1,9 @@
 # Agent Tasks Tracker
 
 ## Current Task Status
-- **Task**: Adopt WSP-PROC-0012 and populate PROJECT-WORK.md / AGENT-TASKS.md
+- **Task**: Reconcile PROJECT-WORK.md and AGENT-TASKS.md with actual project state
 - **Started**: Current session
-- **Priority**: High (required docs absent, must be created)
+- **Priority**: High (trackers must reflect actual code/tests/git state)
 - **Dependencies**: None (based on existing code state)
 
 ## Task Reconciliation
@@ -16,8 +16,7 @@
 - tools/ directory with WSP process templates
 
 ### No existing work overwritten:
-- PROJECT-WORK.md created fresh (new file)
-- AGENT-TASKS.md created fresh (new file)
+- PROJECT-WORK.md and AGENT-TASKS.md updated to reflect actual project state
 - Existing git commits preserved exactly
 - No modifications to source code or test logic
 
@@ -26,20 +25,22 @@
 - Project structure understood (CMake, tools, tests, submodules)
 - Project requirements documented from README and code analysis
 - Monitoring audit boundaries understood (no empty/comment-only commits)
+- PROJECT-WORK.md and AGENT-TASKS.md reconciled with actual project state
+- Both pytest tests pass (test_version.py, test_cmake.py)
 
 ### What needs attention:
 - **No WSP-PROC-0012 Initialize-ProjectWork.ps1 available locally** - adopted via reference
-- PROJECT-WORK.md and AGENT-TASKS.md must reflect actual project state, not placeholder templates
-- Must reconcile against existing tests and code before claiming completion
+- Must continue reconciling against existing tests and code before claiming completion
+- Next concrete work: Download kerTeX source bundle and verify SHA-256
 
 ### Branch/worktree for this task:
 - Working on `master` branch
-- No local modifications to tracked files (beyond creating PROJECT-WORK.md and AGENT-TASKS.md)
-- Untracked: tests/__pycache__, PROJECT-WORK.md, AGENT-TASKS.md
+- No local modifications to tracked files (beyond updating PROJECT-WORK.md and AGENT-TASKS.md)
+- Untracked: tests/__pycache__
 
 ### Acceptance criteria for this task:
-- [x] PROJECT-WORK.md created with accurate project status
-- [x] AGENT-TASKS.md created with task tracking information  
+- [x] PROJECT-WORK.md updated with accurate project status
+- [x] AGENT-TASKS.md updated with task tracking information  
 - [x] Both files reconcile with existing code/tests (no overwrites)
 - [x] Monitoring audit boundaries respected (no empty commits)
 - [x] Concrete next steps documented for future work

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string] $ArchiveDirectory = 'out/downloads/texlive-2020-final',
     [string] $SourceDirectory = 'out/latex-source',
@@ -113,6 +113,11 @@ function Replace-Exact {
         [Parameter(Mandatory)] [int] $ExpectedCount
     )
     $text = Get-Content -LiteralPath $Path -Raw
+    # Normalize line endings to LF so here-string patterns (CRLF on Windows)
+    # match source files that use LF endings.
+    $text = $text -replace "`r`n", "`n"
+    $Old = $Old -replace "`r`n", "`n"
+    $New = $New -replace "`r`n", "`n"
     $count = ([regex]::Matches($text, [regex]::Escape($Old))).Count
     if ($count -ne $ExpectedCount) {
         throw "Patch precondition failed for $Path`: expected $ExpectedCount occurrence(s), found $count"
@@ -223,3 +228,4 @@ if ($missing -or $unexpected) {
     RuntimeFiles = @($actual).Count
     Destination = $runtimeRoot
 }
+
